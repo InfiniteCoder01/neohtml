@@ -1,0 +1,9 @@
+[package]
+name = "neohtml"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+build_html = "2.4.0"
+scanf = "1.2.1"
+thiserror = "1.0.47"
