@@ -133,6 +133,22 @@ impl<R: std::io::BufRead> Reader<R> {
         self.next_text_cond("".to_owned(), |line| !section_prefixed(line))
     }
 
+    fn next_text_end(&mut self, end: &str) -> Result<String, PageParseError> {
+        self.skip_blanks()?;
+        let text = self.next_text_cond("".to_owned(), |line| {
+            if let Some(section) = strip_section_prefix(line) {
+                if let Some(tag) = section.strip_prefix('/') {
+                    if tag == end {
+                        return false;
+                    }
+                }
+            }
+            true
+        })?;
+        self.next_line()?;
+        Ok(text)
+    }
+
     pub fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
         if let Some(line) = self.next_line_if(section_prefixed)? {
             if let Some(attr) = strip_section_prefix(&line) {
@@ -179,7 +195,7 @@ impl<R: std::io::BufRead> Reader<R> {
             let line = if let Some(line) = self.next_line()? {
                 if let Some(end_tag) = end_tag {
                     if let Some(section) = strip_section_prefix(&line) {
-                        if let Some(tag) = section.strip_prefix("end") {
+                        if let Some(tag) = section.strip_prefix('/') {
                             if tag == end_tag {
                                 break;
                             }

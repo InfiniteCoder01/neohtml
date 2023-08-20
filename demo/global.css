@@ -4,6 +4,7 @@
   --subtitle-fg: #a4c3dd;
   --bg: #202124;
   --note-bg: #829;
+  --code-bg: #345;
 }
 
 * {
@@ -51,6 +52,13 @@ p {
 a {
   color: #f9a1bc;
   text-decoration: none;
+}
+
+.code {
+  background-color: var(--code-bg);
+  border-radius: 0.5rem;
+  padding: 1.4rem;
+  margin-top: 2rem;
 }
 
 .note {

@@ -14,6 +14,10 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: Vec<Section>,
     },
+    Code {
+        attributes: Vec<Attribute>,
+        content: String,
+    },
     Note {
         attributes: Vec<Attribute>,
         content: String,
@@ -42,12 +46,19 @@ impl Section {
                     content: source.next_text()?,
                 })
             }
-            "startdiv" => {
-                let tag = section.strip_prefix("start").unwrap();
-                Ok(Self::Container {
-                    tag: tag.to_owned(),
-                    attributes: source.next_attrs()?,
-                    content: source.next_sections(Some(tag))?,
+            "div/" | "code/" => {
+                let tag = section.strip_suffix('/').unwrap();
+                let attributes = source.next_attrs()?;
+                Ok(match tag {
+                    "code" => Self::Code {
+                        attributes,
+                        content: source.next_text_end("code")?,
+                    },
+                    _ => Self::Container {
+                        tag: tag.to_owned(),
+                        attributes,
+                        content: source.next_sections(Some(tag))?,
+                    },
                 })
             }
             "note" => Ok(Self::Note {
@@ -104,6 +115,14 @@ impl Section {
                 }
                 html
             },)),
+            Section::Code {
+                attributes,
+                content,
+            } => Ok(format!(
+                "<pre class = \"code\"><code{}>{}</pre></code>",
+                attributes!(attributes),
+                content
+            )),
             Section::Note {
                 attributes,
                 content,

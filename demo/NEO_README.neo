@@ -35,3 +35,7 @@ There are aspects to each I like. What I'm after is a
 format that's easy to use and gives me the best parts
 of each. I also never want to change formats again,
 regardless of how often I change the tech I'm riding on.
+
+-- code/
+console.log("Demo!");
+-- /code
