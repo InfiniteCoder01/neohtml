@@ -4,7 +4,7 @@
   --subtitle-fg: #a4c3dd;
   --bg: #202124;
   --note-bg: #829;
-  --code-bg: #345;
+  --code-bg: #383930;
 }
 
 * {
@@ -54,11 +54,15 @@ a {
   text-decoration: none;
 }
 
-.code {
+code {
   background-color: var(--code-bg);
   border-radius: 0.5rem;
   padding: 1.4rem;
   margin-top: 2rem;
+}
+
+.hljs {
+  background: var(--code-bg);
 }
 
 .note {

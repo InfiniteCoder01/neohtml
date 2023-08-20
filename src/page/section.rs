@@ -15,6 +15,7 @@ pub enum Section {
         content: Vec<Section>,
     },
     Code {
+        tag: String,
         attributes: Vec<Attribute>,
         content: String,
     },
@@ -25,6 +26,11 @@ pub enum Section {
     Notes {
         attributes: Vec<Attribute>,
         content: Vec<String>,
+    },
+    Checklist {
+        attributes: Vec<Attribute>,
+        content: Vec<String>,
+        todo: bool,
     },
 }
 
@@ -46,15 +52,16 @@ impl Section {
                     content: source.next_text()?,
                 })
             }
-            "div/" | "code/" => {
+            "div/" | "script/" | "code/" => {
                 let tag = section.strip_suffix('/').unwrap();
                 let attributes = source.next_attrs()?;
                 Ok(match tag {
-                    "code" => Self::Code {
+                    "code" | "script" => Self::Code {
+                        tag: tag.to_owned(),
                         attributes,
-                        content: source.next_text_end("code")?,
+                        content: source.next_text_end_tag("".to_owned(), tag, true)?,
                     },
-                    _ => Self::Container {
+                    tag => Self::Container {
                         tag: tag.to_owned(),
                         attributes,
                         content: source.next_sections(Some(tag))?,
@@ -67,7 +74,15 @@ impl Section {
             }),
             "notes" => Ok(Self::Notes {
                 attributes: source.next_attrs()?,
-                content: source.next_notes()?,
+                content: source.next_list("- ")?,
+            }),
+            "checklist" | "todo" => Ok(Self::Checklist {
+                attributes: source.next_attrs()?,
+                content: source.next_list_raw(
+                    |line| line.starts_with("[] ") || line.starts_with("[x] "),
+                    |line| Some(line),
+                )?,
+                todo: section == "todo",
             }),
             _ => Err(PageParseError::UnknownSection(section.to_owned())),
         }
@@ -83,14 +98,14 @@ impl Section {
         }
 
         macro_rules! title {
-            ($attrs: expr, $default: literal) => {
+            ($attrs: expr) => {
                 $attrs
                     .iter()
                     .find_map(|attr| match attr {
-                        Attribute::Title(title) => Some(title.as_str()),
+                        Attribute::Title(title) => Some(format!("<h4>{}</h4>", title.as_str())),
                         _ => None,
                     })
-                    .unwrap_or($default)
+                    .unwrap_or_default()
             };
         }
 
@@ -116,20 +131,28 @@ impl Section {
                 html
             },)),
             Section::Code {
+                tag,
                 attributes,
                 content,
-            } => Ok(format!(
-                "<pre class = \"code\"><code{}>{}</pre></code>",
-                attributes!(attributes),
-                content
-            )),
+            } => Ok(match tag.as_str() {
+                "code" => format!(
+                    "<pre><code{}>{}</pre></code>",
+                    attributes!(attributes),
+                    escape_html(content),
+                ),
+                tag => format!(
+                    "<{tag}{}>{}</{tag}>",
+                    attributes!(attributes),
+                    escape_html(content),
+                ),
+            }),
             Section::Note {
                 attributes,
                 content,
             } => Ok(format!(
                 "<div class = \"note\"{}><h4>{}</h4><p>{}</p></div>",
                 attributes!(attributes),
-                title!(attributes, "NOTE"),
+                title!(attributes),
                 content,
             )),
             Section::Notes {
@@ -138,7 +161,7 @@ impl Section {
             } => Ok(format!(
                 "<div class = \"note\"{}><h4>{}</h4><ul>{}</ul></div>",
                 attributes!(attributes),
-                title!(attributes, "NOTES"),
+                title!(attributes),
                 join_iter(
                     content
                         .iter()
@@ -146,12 +169,42 @@ impl Section {
                     ""
                 ),
             )),
+            Section::Checklist {
+                attributes,
+                content,
+                todo,
+            } => Ok(format!(
+                "<div{}>{}{}</div>",
+                attributes!(attributes),
+                title!(attributes),
+                join_iter(
+                    content.iter().map(|item| format!(
+                        "<label><input type=\"checkbox\" {}{}/> {}</label><br>",
+                        if *todo { "disabled " } else { "" },
+                        if item.starts_with("[x]") {
+                            "checked "
+                        } else {
+                            ""
+                        },
+                        item.strip_prefix("[] ")
+                            .or_else(|| item.strip_prefix("[x] "))
+                            .unwrap()
+                    )),
+                    ""
+                ),
+            )),
         }
     }
 }
 
+pub fn escape_html(code: &str) -> String {
+    code.replace('&', "&amp")
+        .replace('<', "&lt")
+        .replace('>', "&gt")
+}
+
 pub fn text_to_html(text: &str) -> String {
-    text.replace('\n', "<br>")
+    escape_html(text).replace('\n', "<br>")
 }
 
 pub fn join_iter(iter: impl Iterator<Item = String>, intersperse: &str) -> String {

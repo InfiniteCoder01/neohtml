@@ -42,7 +42,15 @@ impl Page {
 
     pub fn to_html(&self) -> Result<HtmlPage, PageBuildError> {
         let mut page = HtmlPage::new();
+        page.add_head_link(
+            "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/monokai.min.css",
+            "stylesheet",
+        );
+        page.add_script_link(
+            "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js",
+        );
         page.add_head_link("global.css", "stylesheet");
+        page.add_script_literal("hljs.highlightAll();");
         for section in &self.sections {
             page.add_html(section.to_html()?);
         }
@@ -103,10 +111,11 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(())
     }
 
-    fn next_text_cond(
+    fn next_text_raw(
         &mut self,
         prefix: String,
         cond: impl Fn(&str) -> bool,
+        raw: bool,
     ) -> Result<String, PageParseError> {
         let mut text = prefix;
         loop {
@@ -116,13 +125,19 @@ impl<R: std::io::BufRead> Reader<R> {
                 break;
             };
 
-            if line.trim().is_empty() {
+            #[allow(clippy::collapsible_else_if)]
+            if raw {
+                text.push_str(&line);
                 text.push('\n');
             } else {
-                if !text.ends_with('\n') {
-                    text.push(' ');
+                if line.trim().is_empty() {
+                    text.push('\n');
+                } else {
+                    if !text.ends_with('\n') {
+                        text.push(' ');
+                    }
+                    text.push_str(&line);
                 }
-                text.push_str(&line);
             }
         }
         Ok(text.trim().to_owned())
@@ -130,21 +145,30 @@ impl<R: std::io::BufRead> Reader<R> {
 
     fn next_text(&mut self) -> Result<String, PageParseError> {
         self.skip_blanks()?;
-        self.next_text_cond("".to_owned(), |line| !section_prefixed(line))
+        self.next_text_raw("".to_owned(), |line| !section_prefixed(line), false)
     }
 
-    fn next_text_end(&mut self, end: &str) -> Result<String, PageParseError> {
+    fn next_text_end_tag(
+        &mut self,
+        prefix: String,
+        end: &str,
+        raw: bool,
+    ) -> Result<String, PageParseError> {
         self.skip_blanks()?;
-        let text = self.next_text_cond("".to_owned(), |line| {
-            if let Some(section) = strip_section_prefix(line) {
-                if let Some(tag) = section.strip_prefix('/') {
-                    if tag == end {
-                        return false;
+        let text = self.next_text_raw(
+            prefix,
+            |line| {
+                if let Some(section) = strip_section_prefix(line) {
+                    if let Some(tag) = section.strip_prefix('/') {
+                        if tag == end {
+                            return false;
+                        }
                     }
                 }
-            }
-            true
-        })?;
+                true
+            },
+            raw,
+        )?;
         self.next_line()?;
         Ok(text)
     }
@@ -166,26 +190,32 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(attrs)
     }
 
-    pub fn next_note(&mut self) -> Result<Option<String>, PageParseError> {
+    pub fn next_list_raw(
+        &mut self,
+        filter: impl Fn(&str) -> bool,
+        strip: impl Fn(&str) -> Option<&str>,
+    ) -> Result<Vec<String>, PageParseError> {
         self.skip_blanks()?;
-        if let Some(line) = self.next_line_if(|line| line.starts_with("- "))? {
-            if let Some(note_start) = line.strip_prefix("- ") {
-                return Ok(Some(
-                    self.next_text_cond(note_start.to_owned(), |line| {
-                        !section_prefixed(line) && !line.starts_with("- ")
-                    })?,
-                ));
+        let mut list = Vec::new();
+        while let Some(line) = self.next_line_if(&filter)? {
+            if let Some(entry_start) = strip(&line) {
+                let entry = self.next_text_raw(
+                    entry_start.to_owned(),
+                    |line| !section_prefixed(line) && !filter(line),
+                    false,
+                )?;
+                list.push(entry);
+                self.skip_blanks()?;
             }
         }
-        Ok(None)
+        Ok(list)
     }
 
-    pub fn next_notes(&mut self) -> Result<Vec<String>, PageParseError> {
-        let mut notes = Vec::new();
-        while let Some(note) = self.next_note()? {
-            notes.push(note);
-        }
-        Ok(notes)
+    pub fn next_list(&mut self, prefix: &str) -> Result<Vec<String>, PageParseError> {
+        self.next_list_raw(
+            |line| line.starts_with(prefix),
+            |line| line.strip_prefix(prefix),
+        )
     }
 
     pub fn next_sections(&mut self, end_tag: Option<&str>) -> Result<Vec<Section>, PageParseError> {

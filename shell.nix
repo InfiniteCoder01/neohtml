@@ -1,5 +1,5 @@
 { pkgs ? import <nixpkgs> { } }:
 with pkgs; mkShell {
   inputsFrom = [];
-  buildInputs = [ rustup ];
+  buildInputs = [ rustup cargo-watch ];
 }
