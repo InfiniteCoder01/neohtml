@@ -9,10 +9,27 @@ use thiserror::Error;
 use self::attribute::Attribute;
 
 pub fn section_prefixed(line: &str) -> bool {
-    line.starts_with("->") || line.starts_with("--")
+    line.starts_with("->") || line.starts_with("--") || line.starts_with("```")
 }
 
 pub fn strip_section_prefix(line: &str) -> Option<&str> {
+    line.strip_prefix("->")
+        .or_else(|| line.strip_prefix("--"))
+        .or_else(|| {
+            if line.starts_with("```") {
+                Some(line)
+            } else {
+                None
+            }
+        })
+        .map(|line| line.trim())
+}
+
+pub fn attr_prefixed(line: &str) -> bool {
+    line.starts_with("->") || line.starts_with("--")
+}
+
+pub fn strip_attr_prefix(line: &str) -> Option<&str> {
     line.strip_prefix("->")
         .or_else(|| line.strip_prefix("--"))
         .map(|line| line.trim())
@@ -143,9 +160,9 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(text.trim().to_owned())
     }
 
-    fn next_text(&mut self) -> Result<String, PageParseError> {
+    fn next_text(&mut self, raw: bool) -> Result<String, PageParseError> {
         self.skip_blanks()?;
-        self.next_text_raw("".to_owned(), |line| !section_prefixed(line), false)
+        self.next_text_raw("".to_owned(), |line| !section_prefixed(line), raw)
     }
 
     fn next_text_end_tag(
@@ -158,6 +175,9 @@ impl<R: std::io::BufRead> Reader<R> {
         let text = self.next_text_raw(
             prefix,
             |line| {
+                if end == "```" && line == end {
+                    return false;
+                }
                 if let Some(section) = strip_section_prefix(line) {
                     if let Some(tag) = section.strip_prefix('/') {
                         if tag == end {
@@ -174,8 +194,8 @@ impl<R: std::io::BufRead> Reader<R> {
     }
 
     pub fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
-        if let Some(line) = self.next_line_if(section_prefixed)? {
-            if let Some(attr) = strip_section_prefix(&line) {
+        if let Some(line) = self.next_line_if(attr_prefixed)? {
+            if let Some(attr) = strip_attr_prefix(&line) {
                 return Ok(Some(Attribute::parse(attr)?));
             }
         }
@@ -240,7 +260,11 @@ impl<R: std::io::BufRead> Reader<R> {
             if let Some(section) = strip_section_prefix(&line) {
                 sections.push(Section::parse(self, section)?);
             } else {
-                return Err(PageParseError::ExpectedSection(line));
+                sections.push(Section::Text {
+                    tag: "p".to_owned(),
+                    attributes: Vec::new(),
+                    content: self.next_text_raw(line, |line| !section_prefixed(line), false)?,
+                });
             }
         }
         Ok(sections)
@@ -268,6 +292,8 @@ pub enum PageParseError {
     MissingAttributeArgument(String),
     #[error("Unexpected argument '{0}' in attribute '{1}', this attribute is ment to be used without arguments")]
     UnexpectedArgument(String, String),
+    #[error("Title/Subtitle section is empty!")]
+    EmptyTitle,
 }
 
 #[derive(Error, Debug)]

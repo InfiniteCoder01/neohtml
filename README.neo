@@ -8,8 +8,19 @@ Neopolitan to HTML converter
 -- title: NOTE
 Neopolitan is Alan's thing, check it out here: https://www.alanwsmith.com/neopolitan
 
+```
+
+fn main() {
+    println!("Hello, World!");
+}
+
+```
+
+
 -- todo
 -- title: TODO
+
+[] Inline tags
 
 [] aside
 [] blockquote

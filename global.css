@@ -54,11 +54,14 @@ a {
   text-decoration: none;
 }
 
+pre {
+  margin-top: 2rem;
+}
+
 code {
   background-color: var(--code-bg);
   border-radius: 0.5rem;
   padding: 1.4rem;
-  margin-top: 2rem;
 }
 
 .hljs {
