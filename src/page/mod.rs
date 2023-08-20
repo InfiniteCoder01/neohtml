@@ -1,6 +1,7 @@
 pub mod attribute;
 pub mod section;
 use build_html::Html;
+use build_html::HtmlContainer;
 use build_html::HtmlPage;
 use section::Section;
 use thiserror::Error;
@@ -34,30 +35,16 @@ impl Page {
 
 impl Page {
     pub fn new<R: std::io::BufRead>(source: R) -> Result<Self, PageParseError> {
-        let mut source = Reader::new(source);
-        let mut sections = Vec::new();
-
-        loop {
-            source.skip_blanks()?;
-            let line = if let Some(line) = source.next_line()? {
-                line
-            } else {
-                break;
-            };
-
-            if let Some(section) = strip_section_prefix(&line) {
-                sections.push(Section::parse(&mut source, section)?);
-            } else {
-                return Err(PageParseError::ExpectedSection(line));
-            }
-        }
-        Ok(Self { sections })
+        Ok(Self {
+            sections: Reader::new(source).next_sections(None)?,
+        })
     }
 
     pub fn to_html(&self) -> Result<HtmlPage, PageBuildError> {
         let mut page = HtmlPage::new();
+        page.add_head_link("global.css", "stylesheet");
         for section in &self.sections {
-            section.add_to_page(&mut page)?;
+            page.add_html(section.to_html()?);
         }
         Ok(page)
     }
@@ -116,11 +103,14 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(())
     }
 
-    fn next_text(&mut self) -> Result<String, PageParseError> {
-        self.skip_blanks()?;
-        let mut text = String::new();
+    fn next_text_cond(
+        &mut self,
+        prefix: String,
+        cond: impl Fn(&str) -> bool,
+    ) -> Result<String, PageParseError> {
+        let mut text = prefix;
         loop {
-            let line = if let Some(line) = self.next_line_if(|line| !section_prefixed(line))? {
+            let line = if let Some(line) = self.next_line_if(&cond)? {
                 line
             } else {
                 break;
@@ -138,6 +128,11 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(text.trim().to_owned())
     }
 
+    fn next_text(&mut self) -> Result<String, PageParseError> {
+        self.skip_blanks()?;
+        self.next_text_cond("".to_owned(), |line| !section_prefixed(line))
+    }
+
     pub fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
         if let Some(line) = self.next_line_if(section_prefixed)? {
             if let Some(attr) = strip_section_prefix(&line) {
@@ -153,6 +148,56 @@ impl<R: std::io::BufRead> Reader<R> {
             attrs.push(attr);
         }
         Ok(attrs)
+    }
+
+    pub fn next_note(&mut self) -> Result<Option<String>, PageParseError> {
+        self.skip_blanks()?;
+        if let Some(line) = self.next_line_if(|line| line.starts_with("- "))? {
+            if let Some(note_start) = line.strip_prefix("- ") {
+                return Ok(Some(
+                    self.next_text_cond(note_start.to_owned(), |line| {
+                        !section_prefixed(line) && !line.starts_with("- ")
+                    })?,
+                ));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn next_notes(&mut self) -> Result<Vec<String>, PageParseError> {
+        let mut notes = Vec::new();
+        while let Some(note) = self.next_note()? {
+            notes.push(note);
+        }
+        Ok(notes)
+    }
+
+    pub fn next_sections(&mut self, end_tag: Option<&str>) -> Result<Vec<Section>, PageParseError> {
+        let mut sections = Vec::new();
+        loop {
+            self.skip_blanks()?;
+            let line = if let Some(line) = self.next_line()? {
+                if let Some(end_tag) = end_tag {
+                    if let Some(section) = strip_section_prefix(&line) {
+                        if let Some(tag) = section.strip_prefix("end") {
+                            if tag == end_tag {
+                                break;
+                            }
+                        }
+                    }
+                }
+                line
+            } else {
+                break;
+            };
+
+            if let Some(section) = strip_section_prefix(&line) {
+                sections.push(Section::parse(self, section)?);
+            } else {
+                return Err(PageParseError::ExpectedSection(line));
+            }
+        }
+        Ok(sections)
     }
 }
 

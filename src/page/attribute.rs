@@ -7,7 +7,7 @@ pub enum Attribute {
     // AutoFocus,
     // By(String),
     // Cite(String),
-    // Class(Vec<String>),
+    Class(String),
     // ContentEditable(String),
     // Generic((String, String)),
     Hidden,
@@ -16,7 +16,7 @@ pub enum Attribute {
     // Show(String),
     // ShowTitle(String),
     // Subtitle(String),
-    // Title(String),
+    Title(String),
     // Type(String),
     // Url(String),
 }
@@ -51,8 +51,10 @@ impl Attribute {
         }
 
         match attr_name.as_str() {
+            "class" => with_arg!(Attribute::Class),
             "id" => with_arg!(Attribute::Id),
             "hidden" => no_args!(Attribute::Hidden),
+            "title" => with_arg!(Attribute::Title),
             _ => Err(PageParseError::UnknownAttribute(attr.to_owned())),
         }
         // let mut attr_name = String::new();
@@ -63,8 +65,10 @@ impl Attribute {
 
     pub fn to_html(&self) -> String {
         match self {
+            Attribute::Class(class) => format!("class=\"{class}\""),
             Attribute::Hidden => "hidden".to_owned(),
             Attribute::Id(id) => format!("id=\"{id}\""),
+            Attribute::Title(title) => format!("title=\"{title}\""),
         }
     }
 }
