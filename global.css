@@ -2,18 +2,23 @@
   --fg: #e2ded1;
   --title-fg: #67afee;
   --subtitle-fg: #a4c3dd;
+
   --bg: #202124;
+  --bookmark-bg: #333;
   --note-bg: #829;
   --code-bg: #383930;
+
+  --border: #fff;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
+  margin-top: 1em;
 }
 
 body {
-  width: min(100% - 3rem, 58ch);
+  width: min(100% - 3rem, 70ch);
   padding: 0;
   margin: auto;
 
@@ -24,6 +29,7 @@ body {
   font-size: 1rem;
 }
 
+/* -------------------------------------- Titles -------------------------------------- */
 .title {
   font-size: 2.5rem;
   color: var(--title-fg);
@@ -34,18 +40,23 @@ body {
   color: var(--subtitle-fg);
 }
 
+.bookmarkTitle {
+  font-size: 1.2rem;
+  line-height: 1.1;
+  color: var(--title-fg);
+}
+
 h1 {
   font-size: 2rem;
-  margin-top: 2rem;
   line-height: 1.1;
 }
 
-h2 {
-  margin-top: 2rem;
+h3, h4 {
+  margin-top: 0;
 }
 
+/* --------------------------------------- Text --------------------------------------- */
 p {
-  margin: 0;
   font-size: 1rem;
 }
 
@@ -54,11 +65,9 @@ a {
   text-decoration: none;
 }
 
-pre {
-  margin-top: 2rem;
-}
-
+/* -------------------------------------- Blocks -------------------------------------- */
 code {
+  margin-top: 0;
   background-color: var(--code-bg);
   border-radius: 0.5rem;
   padding: 1.4rem;
@@ -68,6 +77,15 @@ code {
   background: var(--code-bg);
 }
 
+.bookmark {
+  background-color: var(--bookmark-bg);
+  max-width: 70%;
+  border: 2px solid #fff;
+  border-radius: 0.6rem;
+  padding: 1rem;
+  margin-top: 2rem;
+}
+
 .note {
   background-color: var(--note-bg);
   border-radius: 0.6rem;
@@ -75,12 +93,18 @@ code {
   margin-top: 2rem;
 }
 
-ul {
+/* ------------------------------------ Other tags ------------------------------------ */
+ul, ol {
   margin: 0;
-  padding-left: 1.5rem;
+  padding-left: 1rem;
 }
 
 li {
   margin: 0;
   padding: 0px;
+}
+
+img {
+  max-width: 100%;
+  display: block;
 }

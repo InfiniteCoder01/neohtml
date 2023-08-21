@@ -119,6 +119,20 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(None)
     }
 
+    pub fn next_line_if_map(
+        &mut self,
+        map: impl FnOnce(&str) -> Option<&str>,
+    ) -> Result<Option<String>, PageParseError> {
+        if let Some(line) = self.peek_line()? {
+            if let Some(line) = map(line) {
+                let line = line.to_owned();
+                self.peek = None;
+                return Ok(Some(line));
+            }
+        }
+        Ok(None)
+    }
+
     pub fn skip_blank(&mut self) -> Result<bool, PageParseError> {
         Ok(self.next_line_if(|line| line.trim().is_empty())?.is_some())
     }
@@ -157,7 +171,11 @@ impl<R: std::io::BufRead> Reader<R> {
                 }
             }
         }
-        Ok(text.trim().to_owned())
+        if raw {
+            Ok(text.trim_end().to_owned())
+        } else {
+            Ok(text.trim().to_owned())
+        }
     }
 
     fn next_text(&mut self, raw: bool) -> Result<String, PageParseError> {
@@ -196,7 +214,11 @@ impl<R: std::io::BufRead> Reader<R> {
     pub fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
         if let Some(line) = self.next_line_if(attr_prefixed)? {
             if let Some(attr) = strip_attr_prefix(&line) {
-                return Ok(Some(Attribute::parse(attr)?));
+                if let Some(attr) = Attribute::parse(attr)? {
+                    return Ok(Some(attr));
+                } else {
+                    self.peek = Some(line);
+                }
             }
         }
         Ok(None)
@@ -286,14 +308,14 @@ pub enum PageParseError {
     ExpectedSection(String),
     #[error("Unknown section: '{0}'")]
     UnknownSection(String),
-    #[error("Unknown attribute: '{0}'")]
-    UnknownAttribute(String),
     #[error("Missing attribute argument in attribute '{0}'")]
     MissingAttributeArgument(String),
     #[error("Unexpected argument '{0}' in attribute '{1}', this attribute is ment to be used without arguments")]
     UnexpectedArgument(String, String),
     #[error("Title/Subtitle section is empty!")]
     EmptyTitle,
+    #[error("Expected video ID")]
+    ExpectedVideoID,
 }
 
 #[derive(Error, Debug)]

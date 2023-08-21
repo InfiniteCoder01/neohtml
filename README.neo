@@ -6,26 +6,18 @@ Neopolitan to HTML converter
 
 -- note
 -- title: NOTE
-Neopolitan is Alan's thing, check it out here: https://www.alanwsmith.com/neopolitan
-
-```
-
-fn main() {
-    println!("Hello, World!");
-}
-
-```
-
+Neopolitan is Alan's thing, check it out here: https://www.alanwsmith.com/neopolitanan
 
 -- todo
 -- title: TODO
 
 [] Inline tags
+[] Show attr?
 
-[] aside
-[] blockquote
-[] bookmark
-[] categories
+[x] aside
+[x] blockquote
+[x] bookmark
+[] categories?
 [x] checklist
 [x] code
 [x] h1
@@ -34,31 +26,35 @@ fn main() {
 [x] h4
 [x] h5
 [x] h6
-[] hidden
-[] html
-[] hr
-[] image
-[] list
-[] metadata
-[] nav
+[] hidden? Attr?
+[x] html
+[x] hr
+[x] image
+[] image: The first item is a basename that is used to search for the image and create the full path which is passed to the template?
+[x] list
+[] metadata?
+[x] nav
 [x] note
 [x] notes
-[] olist
+[x] olist
 [x] p
-[] pre
-[] article section
-[] css section
+[] Can pre contain other sections?
+[x] article section
+[x] css section
 [x] div section
-[] html section
-[] pre section
-[] results section
+[x] html section
+[x] pre section
+[] results section?
 [x] script section
-[] section section
-[] tldr section
+[x] section section
+[] tldr section?
 [x] subtitle
 [x] title
 [x] todo
-[] vimeo
-[] warning
-[] warnings
-[] youtube
+[] vimeo?
+[] warning?
+[] warnings?
+[] youtube: attrs?
+
+-- nav
+<<link|Alan|alanwsmith.com>> | <<link|Alan's GitHub|github.com/alanwsmith>>

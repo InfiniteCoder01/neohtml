@@ -9,7 +9,8 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: String,
     },
-    Aside {
+    Wrapper {
+        tag: String,
         attributes: Vec<Attribute>,
         content: String,
     },
@@ -23,7 +24,12 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: String,
     },
-    Note {
+    Tag {
+        tag: String,
+        attributes: Vec<Attribute>,
+    },
+
+    Bookmark {
         attributes: Vec<Attribute>,
         content: String,
     },
@@ -31,10 +37,18 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: Vec<String>,
     },
+    List {
+        tag: String,
+        attributes: Vec<Attribute>,
+        content: Vec<String>,
+    },
     Checklist {
         attributes: Vec<Attribute>,
         content: Vec<String>,
         todo: bool,
+    },
+    Youtube {
+        id: String,
     },
 }
 
@@ -44,7 +58,7 @@ impl Section {
         section: &str,
     ) -> Result<Self, PageParseError> {
         match section {
-            "title" | "subtitle" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" => {
+            "title" | "subtitle" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "nav" => {
                 Ok(Self::Text {
                     tag: match section {
                         "title" => "h1 class=\"title\"",
@@ -62,16 +76,26 @@ impl Section {
                     },
                 })
             }
-            "aside" => Ok(Self::Aside {
+            "aside" | "blockquote" => Ok(Self::Wrapper {
+                tag: section.to_owned(),
                 attributes: source.next_attrs()?,
                 content: source.next_text(false)?,
             }),
-            "article/" | "section/" | "div/" | "script/" | "code/" => {
+            "note" => Ok(Self::Wrapper {
+                tag: "div class = \"note\"".to_owned(),
+                attributes: source.next_attrs()?,
+                content: source.next_text(false)?,
+            }),
+            "article/" | "section/" | "div/" | "code/" | "pre/" | "script/" | "html/" | "css/" => {
                 let tag = section.strip_suffix('/').unwrap();
                 let attributes = source.next_attrs()?;
                 Ok(match tag {
-                    "code" | "script" => Self::Code {
-                        tag: tag.to_owned(),
+                    "code" | "pre" | "script" | "html" | "css" => Self::Code {
+                        tag: match tag {
+                            "css" => "style",
+                            tag => tag,
+                        }
+                        .to_owned(),
                         attributes,
                         content: source.next_text_end_tag("".to_owned(), tag, true)?,
                     },
@@ -82,10 +106,10 @@ impl Section {
                     },
                 })
             }
-            "script" => {
+            "pre" | "script" => {
                 let attributes = source.next_attrs()?;
                 Ok(Self::Code {
-                    tag: "script".to_owned(),
+                    tag: section.to_owned(),
                     attributes,
                     content: source.next_text(true)?,
                 })
@@ -98,11 +122,28 @@ impl Section {
                     content: source.next_text_end_tag("".to_owned(), "```", true)?,
                 })
             }
-            "note" => Ok(Self::Note {
+            "hr" | "image" => {
+                let attributes = source.next_attrs()?;
+                Ok(Self::Tag {
+                    tag: section.to_owned(),
+                    attributes,
+                })
+            }
+
+            "bookmark" => Ok(Self::Bookmark {
                 attributes: source.next_attrs()?,
                 content: source.next_text(false)?,
             }),
             "notes" => Ok(Self::Notes {
+                attributes: source.next_attrs()?,
+                content: source.next_list("- ")?,
+            }),
+            "list" | "olist" => Ok(Self::List {
+                tag: match section {
+                    "olist" => "ol",
+                    _ => "ul",
+                }
+                .to_owned(),
                 attributes: source.next_attrs()?,
                 content: source.next_list("- ")?,
             }),
@@ -113,6 +154,11 @@ impl Section {
                     |line| Some(line),
                 )?,
                 todo: section == "todo",
+            }),
+            "youtube" => Ok(Self::Youtube {
+                id: source
+                    .next_line_if_map(super::strip_attr_prefix)?
+                    .ok_or(PageParseError::ExpectedVideoID)?,
             }),
             _ => Err(PageParseError::UnknownSection(section.to_owned())),
         }
@@ -128,14 +174,19 @@ impl Section {
         }
 
         macro_rules! title {
-            ($attrs: expr) => {
+            ($attrs: expr, $tag: expr) => {
                 $attrs
                     .iter()
                     .find_map(|attr| match attr {
-                        Attribute::Title(title) => Some(format!("<h4>{}</h4>", title.as_str())),
+                        Attribute::Title(title) => {
+                            Some(format!("<{}>{}</{}>", $tag, title.as_str(), $tag))
+                        }
                         _ => None,
                     })
                     .unwrap_or_default()
+            };
+            ($attrs: expr) => {
+                title!($attrs, "h4")
             };
         }
 
@@ -149,11 +200,12 @@ impl Section {
                 attributes!(attributes),
                 text_to_html(content)
             )),
-            Section::Aside {
+            Section::Wrapper {
+                tag,
                 attributes,
                 content,
             } => Ok(format!(
-                "<aside{}>{}<p>{}</p></aside>",
+                "<{tag}{}>{}<p>{}</p></{tag}>",
                 attributes!(attributes),
                 title!(attributes),
                 text_to_html(content)
@@ -185,22 +237,39 @@ impl Section {
                     attributes!(attributes),
                     escape_html(content),
                 ),
-                tag => format!("<{tag}{}>{}</{tag}>", attributes!(attributes), content,),
+                tag => format!("<{tag}{}>{}</{tag}>", attributes!(attributes), content),
             }),
-            Section::Note {
+            Section::Tag { tag, attributes } => Ok(format!("<{tag}{} />", attributes!(attributes))),
+
+            Section::Bookmark {
                 attributes,
                 content,
             } => Ok(format!(
-                "<div class = \"note\"{}>{}<p>{}</p></div>",
+                "<div class = \"bookmark\"{}>{}{}</div>",
                 attributes!(attributes),
-                title!(attributes),
-                content,
+                title!(attributes, "h3 class = \"bookmarkTitle\""),
+                text_to_html(content),
             )),
             Section::Notes {
                 attributes,
                 content,
             } => Ok(format!(
                 "<div class = \"note\"{}>{}<ul>{}</ul></div>",
+                attributes!(attributes),
+                title!(attributes),
+                join_iter(
+                    content
+                        .iter()
+                        .map(|item| format!("<li><p>{}</p></li>", item)),
+                    ""
+                ),
+            )),
+            Section::List {
+                tag,
+                attributes,
+                content,
+            } => Ok(format!(
+                "<div{}>{}<{tag}>{}</{tag}></div>",
                 attributes!(attributes),
                 title!(attributes),
                 join_iter(
@@ -233,6 +302,14 @@ impl Section {
                     )),
                     ""
                 ),
+            )),
+            Section::Youtube { id } => Ok(format!(
+                concat!(
+                    r#"<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/{}" "#,
+                    r#"title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; "#,
+                    r#"encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen=""></iframe>"#,
+                ),
+                id
             )),
         }
     }

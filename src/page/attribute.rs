@@ -5,6 +5,7 @@ pub enum Attribute {
     // AccessKey(String),
     // AutoCapitalize(String),
     // AutoFocus,
+    Alt(String),
     // By(String),
     // Cite(String),
     Class(String),
@@ -13,16 +14,17 @@ pub enum Attribute {
     Hidden,
     Id(String),
     // Link(String),
-    // Show(String),
+    Show,
     // ShowTitle(String),
     // Subtitle(String),
+    Src(String),
     Title(String),
     // Type(String),
     // Url(String),
 }
 
 impl Attribute {
-    pub fn parse(attr: &str) -> Result<Attribute, PageParseError> {
+    pub fn parse(attr: &str) -> Result<Option<Attribute>, PageParseError> {
         let mut attr_name = String::new();
         let mut attr_value = String::new();
         let attr_value = if scanf::sscanf!(attr, "{}: {}", attr_name, attr_value).is_ok() {
@@ -34,9 +36,9 @@ impl Attribute {
 
         macro_rules! with_arg {
             ($attr: path) => {
-                Ok($attr(attr_value.ok_or(
+                Ok(Some($attr(attr_value.ok_or(
                     PageParseError::MissingAttributeArgument(attr_name),
-                )?))
+                )?)))
             };
         }
 
@@ -45,17 +47,20 @@ impl Attribute {
                 if let Some(value) = attr_value {
                     Err(PageParseError::UnexpectedArgument(value, attr_name))
                 } else {
-                    Ok($attr)
+                    Ok(Some($attr))
                 }
             }};
         }
 
         match attr_name.as_str() {
+            "alt" => with_arg!(Attribute::Alt),
             "class" => with_arg!(Attribute::Class),
-            "id" => with_arg!(Attribute::Id),
             "hidden" => no_args!(Attribute::Hidden),
+            "id" => with_arg!(Attribute::Id),
+            "show" => no_args!(Attribute::Show),
+            "src" => with_arg!(Attribute::Src),
             "title" => with_arg!(Attribute::Title),
-            _ => Err(PageParseError::UnknownAttribute(attr.to_owned())),
+            _ => Ok(None),
         }
         // let mut attr_name = String::new();
         // let mut attr_value = String::new();
@@ -65,9 +70,12 @@ impl Attribute {
 
     pub fn to_html(&self) -> String {
         match self {
+            Attribute::Alt(alt) => format!("alt=\"{alt}\""),
             Attribute::Class(class) => format!("class=\"{class}\""),
             Attribute::Hidden => "hidden".to_owned(),
             Attribute::Id(id) => format!("id=\"{id}\""),
+            Attribute::Show => "show".to_owned(),
+            Attribute::Src(src) => format!("src=\"{src}\""),
             Attribute::Title(title) => format!("title=\"{title}\""),
         }
     }
