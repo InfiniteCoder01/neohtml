@@ -8,8 +8,11 @@ use thiserror::Error;
 
 use self::attribute::Attribute;
 
-pub fn section_prefixed(line: &str) -> bool {
-    line.starts_with("->") || line.starts_with("--") || line.starts_with("```")
+pub fn has_section_prefix(line: &str) -> bool {
+    line.starts_with("->")
+        || line.starts_with("--")
+        || line.starts_with("```")
+        || line.starts_with('#')
 }
 
 pub fn strip_section_prefix(line: &str) -> Option<&str> {
@@ -25,7 +28,7 @@ pub fn strip_section_prefix(line: &str) -> Option<&str> {
         .map(|line| line.trim())
 }
 
-pub fn attr_prefixed(line: &str) -> bool {
+pub fn has_attr_prefix(line: &str) -> bool {
     line.starts_with("->") || line.starts_with("--")
 }
 
@@ -142,15 +145,15 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(())
     }
 
-    fn next_text_raw(
+    fn next_text(
         &mut self,
-        prefix: String,
-        cond: impl Fn(&str) -> bool,
+        mut filter_map: impl FnMut(&str) -> Option<&str>,
         raw: bool,
     ) -> Result<String, PageParseError> {
-        let mut text = prefix;
+        self.skip_blanks()?;
+        let mut text = String::new();
         loop {
-            let line = if let Some(line) = self.next_line_if(&cond)? {
+            let line = if let Some(line) = self.next_line_if_map(&mut filter_map)? {
                 line
             } else {
                 break;
@@ -178,32 +181,28 @@ impl<R: std::io::BufRead> Reader<R> {
         }
     }
 
-    fn next_text(&mut self, raw: bool) -> Result<String, PageParseError> {
-        self.skip_blanks()?;
-        self.next_text_raw("".to_owned(), |line| !section_prefixed(line), raw)
-    }
-
-    fn next_text_end_tag(
+    fn next_text_until(
         &mut self,
-        prefix: String,
-        end: &str,
+        mut until: impl FnMut(&str) -> bool,
         raw: bool,
     ) -> Result<String, PageParseError> {
-        self.skip_blanks()?;
-        let text = self.next_text_raw(
-            prefix,
+        self.next_text(|line| if until(line) { None } else { Some(line) }, raw)
+    }
+
+    fn next_text_until_tag(&mut self, tag: &str, raw: bool) -> Result<String, PageParseError> {
+        let text = self.next_text_until(
             |line| {
-                if end == "```" && line == end {
-                    return false;
+                if tag == "```" && line == tag {
+                    return true;
                 }
                 if let Some(section) = strip_section_prefix(line) {
-                    if let Some(tag) = section.strip_prefix('/') {
-                        if tag == end {
-                            return false;
+                    if let Some(section_tag) = section.strip_prefix('/') {
+                        if section_tag == tag {
+                            return true;
                         }
                     }
                 }
-                true
+                false
             },
             raw,
         )?;
@@ -211,8 +210,13 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(text)
     }
 
+    fn next_text_until_section(&mut self, raw: bool) -> Result<String, PageParseError> {
+        self.next_text_until(has_section_prefix, raw)
+    }
+
+    // * ----------------------------------- Specials ----------------------------------- * //
     pub fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
-        if let Some(line) = self.next_line_if(attr_prefixed)? {
+        if let Some(line) = self.next_line_if(has_attr_prefix)? {
             if let Some(attr) = strip_attr_prefix(&line) {
                 if let Some(attr) = Attribute::parse(attr)? {
                     return Ok(Some(attr));
@@ -232,41 +236,48 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(attrs)
     }
 
-    pub fn next_list_raw(
+    pub fn next_list(
         &mut self,
         filter: impl Fn(&str) -> bool,
-        strip: impl Fn(&str) -> Option<&str>,
     ) -> Result<Vec<String>, PageParseError> {
         self.skip_blanks()?;
         let mut list = Vec::new();
-        while let Some(line) = self.next_line_if(&filter)? {
-            if let Some(entry_start) = strip(&line) {
-                let entry = self.next_text_raw(
-                    entry_start.to_owned(),
-                    |line| !section_prefixed(line) && !filter(line),
-                    false,
-                )?;
-                list.push(entry);
-                self.skip_blanks()?;
+        while let Some(line) = self.peek_line()? {
+            if !filter(line) {
+                break;
             }
+            let mut fist_line = true;
+            let entry = self.next_text_until(
+                |line| {
+                    if fist_line {
+                        fist_line = false;
+                        return false;
+                    }
+                    has_section_prefix(line) || filter(line)
+                },
+                false,
+            )?;
+            list.push(entry);
+            self.skip_blanks()?;
         }
         Ok(list)
     }
 
-    pub fn next_list(&mut self, prefix: &str) -> Result<Vec<String>, PageParseError> {
-        self.next_list_raw(
-            |line| line.starts_with(prefix),
-            |line| line.strip_prefix(prefix),
-        )
+    pub fn next_list_prefixed(&mut self, prefix: &str) -> Result<Vec<String>, PageParseError> {
+        Ok(self
+            .next_list(|line| line.starts_with(prefix))?
+            .iter()
+            .map(|entry| entry.strip_prefix(prefix).unwrap().to_owned())
+            .collect())
     }
 
     pub fn next_sections(&mut self, end_tag: Option<&str>) -> Result<Vec<Section>, PageParseError> {
         let mut sections = Vec::new();
         loop {
             self.skip_blanks()?;
-            let line = if let Some(line) = self.next_line()? {
+            let line = if let Some(line) = self.peek_line()? {
                 if let Some(end_tag) = end_tag {
-                    if let Some(section) = strip_section_prefix(&line) {
+                    if let Some(section) = strip_section_prefix(line) {
                         if let Some(tag) = section.strip_prefix('/') {
                             if tag == end_tag {
                                 break;
@@ -279,13 +290,36 @@ impl<R: std::io::BufRead> Reader<R> {
                 break;
             };
 
-            if let Some(section) = strip_section_prefix(&line) {
-                sections.push(Section::parse(self, section)?);
+            if line.starts_with('#') {
+                let prefix = line.chars().take_while(|&c| c == '#').collect::<String>();
+                sections.push(Section::Text {
+                    tag: format!("h{}", prefix.len()),
+                    attributes: Vec::new(),
+                    content: self.next_text(
+                        |line| {
+                            if line.trim().is_empty() {
+                                Some(line)
+                            } else {
+                                let line = line.strip_prefix(&prefix)?;
+                                if line.starts_with('#') {
+                                    None
+                                } else {
+                                    Some(line)
+                                }
+                            }
+                        },
+                        false,
+                    )?,
+                });
+            } else if let Some(section) = strip_section_prefix(line) {
+                let section = section.to_owned();
+                self.next_line()?;
+                sections.push(Section::parse(self, &section)?);
             } else {
                 sections.push(Section::Text {
                     tag: "p".to_owned(),
                     attributes: Vec::new(),
-                    content: self.next_text_raw(line, |line| !section_prefixed(line), false)?,
+                    content: self.next_text_until(has_section_prefix, false)?,
                 });
             }
         }

@@ -25,8 +25,15 @@ body {
   background-color: var(--bg);
   color: var(--fg);
   font-family: 'Helvetica', sans-serif;
+  overflow-wrap: break-word;
   line-height: 1.5;
   font-size: 1rem;
+}
+
+br {
+  display: block;
+  content: "";
+  margin-top: 1.2rem;
 }
 
 /* -------------------------------------- Titles -------------------------------------- */
@@ -51,13 +58,16 @@ h1 {
   line-height: 1.1;
 }
 
-h3, h4 {
+h3,
+h4 {
   margin-top: 0;
 }
 
 /* --------------------------------------- Text --------------------------------------- */
 p {
   font-size: 1rem;
+  line-height: 1.6;
+  /* margin: auto; */
 }
 
 a {
@@ -94,7 +104,8 @@ code {
 }
 
 /* ------------------------------------ Other tags ------------------------------------ */
-ul, ol {
+ul,
+ol {
   margin: 0;
   padding-left: 1rem;
 }

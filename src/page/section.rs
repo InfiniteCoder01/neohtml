@@ -72,19 +72,19 @@ impl Section {
                             source.skip_blanks()?;
                             source.next_line()?.ok_or(PageParseError::EmptyTitle)?
                         }
-                        _ => source.next_text(false)?,
+                        _ => source.next_text_until_section(false)?,
                     },
                 })
             }
             "aside" | "blockquote" => Ok(Self::Wrapper {
                 tag: section.to_owned(),
                 attributes: source.next_attrs()?,
-                content: source.next_text(false)?,
+                content: source.next_text_until_section(false)?,
             }),
             "note" => Ok(Self::Wrapper {
                 tag: "div class = \"note\"".to_owned(),
                 attributes: source.next_attrs()?,
-                content: source.next_text(false)?,
+                content: source.next_text_until_section(false)?,
             }),
             "article/" | "section/" | "div/" | "code/" | "pre/" | "script/" | "html/" | "css/" => {
                 let tag = section.strip_suffix('/').unwrap();
@@ -97,7 +97,7 @@ impl Section {
                         }
                         .to_owned(),
                         attributes,
-                        content: source.next_text_end_tag("".to_owned(), tag, true)?,
+                        content: source.next_text_until_tag(tag, true)?,
                     },
                     tag => Self::Container {
                         tag: tag.to_owned(),
@@ -111,7 +111,7 @@ impl Section {
                 Ok(Self::Code {
                     tag: section.to_owned(),
                     attributes,
-                    content: source.next_text(true)?,
+                    content: source.next_text_until_section(true)?,
                 })
             }
             "```" => {
@@ -119,7 +119,7 @@ impl Section {
                 Ok(Self::Code {
                     tag: "code".to_owned(),
                     attributes,
-                    content: source.next_text_end_tag("".to_owned(), "```", true)?,
+                    content: source.next_text_until_tag("```", true)?,
                 })
             }
             "hr" | "image" => {
@@ -132,11 +132,11 @@ impl Section {
 
             "bookmark" => Ok(Self::Bookmark {
                 attributes: source.next_attrs()?,
-                content: source.next_text(false)?,
+                content: source.next_text_until_section(false)?,
             }),
             "notes" => Ok(Self::Notes {
                 attributes: source.next_attrs()?,
-                content: source.next_list("- ")?,
+                content: source.next_list_prefixed("- ")?,
             }),
             "list" | "olist" => Ok(Self::List {
                 tag: match section {
@@ -145,14 +145,12 @@ impl Section {
                 }
                 .to_owned(),
                 attributes: source.next_attrs()?,
-                content: source.next_list("- ")?,
+                content: source.next_list_prefixed("- ")?,
             }),
             "checklist" | "todo" => Ok(Self::Checklist {
                 attributes: source.next_attrs()?,
-                content: source.next_list_raw(
-                    |line| line.starts_with("[]") || line.starts_with("[x]"),
-                    |line| Some(line),
-                )?,
+                content: source
+                    .next_list(|line| line.starts_with("[]") || line.starts_with("[x]"))?,
                 todo: section == "todo",
             }),
             "youtube" => Ok(Self::Youtube {
@@ -322,20 +320,25 @@ pub fn escape_html(code: &str) -> String {
 }
 
 pub fn text_to_html(text: &str) -> String {
-    fn regex_replace<'a>(
-        text: &'a str,
-        pattern: &str,
-        replacement: impl Fn(&regex::Captures) -> String,
-    ) -> std::borrow::Cow<'a, str> {
-        regex::Regex::new(&escape_html(pattern))
-            .unwrap()
-            .replace_all(text, replacement)
+    macro_rules! regex_replace {
+        ($text: ident, $pattern: literal, $captures: ident => $replacement: expr) => {
+            let $text = regex::Regex::new(&escape_html($pattern))
+                .unwrap()
+                .replace_all(&$text, |$captures: &regex::Captures| $replacement);
+        };
     }
 
     let text = escape_html(text);
-    let text = regex_replace(&text, r"<<link\s*\|([^|]*)\w*\|([^|]*)\s*>>", |captures| {
-        format!("<a href = \"{}\">{}</a>", &captures[2], &captures[1])
-    });
+    regex_replace!(
+        text,
+        r"<<link\s*\|([^|]*)\w*\|([^|]*)\s*>>",
+        caps => format!("<a href = \"{}\">{}</a>", &caps[2], &caps[1])
+    );
+    regex_replace!(
+        text,
+        r"\[([^\]]*)\]\(([^\]]*)\)",
+        caps => format!("<a href = \"{}\">{}</a>", &caps[2], &caps[1])
+    );
     text.replace('\n', "<br>")
 }
 
