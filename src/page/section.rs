@@ -9,7 +9,7 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: String,
     },
-    Wrapper {
+    TextWrapper {
         tag: String,
         attributes: Vec<Attribute>,
         content: String,
@@ -37,6 +37,7 @@ pub enum Section {
         content: String,
     },
     Notes {
+        class: String,
         attributes: Vec<Attribute>,
         content: Vec<String>,
     },
@@ -86,13 +87,13 @@ impl Section {
                     },
                 })
             }
-            "aside" | "blockquote" => Ok(Self::Wrapper {
+            "aside" | "blockquote" => Ok(Self::TextWrapper {
                 tag: section.to_owned(),
                 attributes: source.next_attrs()?,
                 content: source.next_text_until_section(false)?,
             }),
-            "note" => Ok(Self::Wrapper {
-                tag: "div class = \"note\"".to_owned(),
+            "note" | "warning" => Ok(Self::TextWrapper {
+                tag: format!("div class = \"{section}\""),
                 attributes: source.next_attrs()?,
                 content: source.next_text_until_section(false)?,
             }),
@@ -143,7 +144,8 @@ impl Section {
             "hidden" => Ok(Self::Hidden {
                 content: source.next_text_until_section(true)?,
             }),
-            "notes" => Ok(Self::Notes {
+            "notes" | "warnings" => Ok(Self::Notes {
+                class: section[0..section.len() - 1].to_owned(),
                 attributes: source.next_attrs()?,
                 content: source.next_list_prefixed("- ")?,
             }),
@@ -228,7 +230,7 @@ impl Section {
                 attributes!(attributes),
                 text_to_html(content)
             )),
-            Section::Wrapper {
+            Section::TextWrapper {
                 tag,
                 attributes,
                 content,
@@ -282,16 +284,18 @@ impl Section {
             )),
             Section::Hidden { content } => Ok(format!("<!-- {} -->", escape_html(content))),
             Section::Notes {
+                class,
                 attributes,
                 content,
             } => Ok(format!(
-                "<div class = \"note\"{}>{}<ul>{}</ul></div>",
+                "<div class = \"{}\"{}>{}<ul>{}</ul></div>",
+                class,
                 attributes!(attributes),
                 title!(attributes),
                 join_iter(
                     content
                         .iter()
-                        .map(|item| format!("<li><p>{}</p></li>", item)),
+                        .map(|item| format!("<li><p>{}</p></li>", text_to_html(item))),
                     ""
                 ),
             )),
@@ -306,7 +310,7 @@ impl Section {
                 join_iter(
                     content
                         .iter()
-                        .map(|item| format!("<li><p>{}</p></li>", item)),
+                        .map(|item| format!("<li><p>{}</p></li>", text_to_html(item))),
                     ""
                 ),
             )),
@@ -327,9 +331,11 @@ impl Section {
                         } else {
                             ""
                         },
-                        item.strip_prefix("[]")
-                            .or_else(|| item.strip_prefix("[x]"))
-                            .unwrap()
+                        text_to_html(
+                            item.strip_prefix("[]")
+                                .or_else(|| item.strip_prefix("[x]"))
+                                .unwrap()
+                        )
                     )),
                     ""
                 ),

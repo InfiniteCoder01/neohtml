@@ -6,6 +6,7 @@
   --bg: #202124;
   --bookmark-bg: #333;
   --note-bg: #829;
+  --warning-bg: #bbbb00;
   --code-bg: #383930;
 
   --border: #fff;
@@ -98,6 +99,13 @@ code {
 
 .note {
   background-color: var(--note-bg);
+  border-radius: 0.6rem;
+  padding: 1.4rem;
+  margin-top: 2rem;
+}
+
+.warning {
+  background-color: var(--warning-bg);
   border-radius: 0.6rem;
   padding: 1.4rem;
   margin-top: 2rem;
