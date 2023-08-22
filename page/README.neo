@@ -15,8 +15,8 @@ Neopolitan is Alan's thing, check it out <<link|here|https://www.alanwsmith.com/
 [] image: The first item is a basename that is used to search for the image and create the full path which is passed to the template
 
 [x] hidden (comment)
-[] metadata (Just here, no output)
-[] categories (Just here, no output)
+[x] metadata (Just here, no output)
+[x] categories (Just here, no output)
 [] vimeo
 [x] warning
 [x] warnings

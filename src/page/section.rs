@@ -60,6 +60,9 @@ pub enum Section {
     Metadata {
         data: HashMap<String, String>,
     },
+    Categories {
+        categories: Vec<String>,
+    },
 }
 
 impl Section {
@@ -182,13 +185,21 @@ impl Section {
                     for metaline in source.next_text_prefixed("--", true)?.split('\n') {
                         let mut name = String::new();
                         let mut value = String::new();
-                        scanf::sscanf!(metaline, "{}: {}", name, value).map_err(|_| {
+                        scanf::sscanf!(metaline, "{}:{}", name, value).map_err(|_| {
                             PageParseError::WrongMetadataFormat(metaline.to_owned())
                         })?;
-                        meta.insert(name, value);
+                        meta.insert(name.trim().to_owned(), value.trim().to_owned());
                     }
                     meta
                 },
+            }),
+            "categories" => Ok(Self::Categories {
+                categories: source
+                    .next_text_prefixed("--", true)?
+                    .split('\n')
+                    .map(str::trim)
+                    .map(str::to_owned)
+                    .collect(),
             }),
             _ => Err(PageParseError::UnknownSection(section.to_owned())),
         }
@@ -370,10 +381,8 @@ impl Section {
             )),
 
             Self::Hidden { content } => Ok(format!("<!-- {} -->", escape_html(content))),
-            Self::Metadata { data } => {
-                dbg!(data);
-                Ok(String::new())
-            }
+            Self::Metadata { data: _ } => Ok(String::new()),
+            Self::Categories { categories: _ } => Ok(String::new()),
         }
     }
 }
