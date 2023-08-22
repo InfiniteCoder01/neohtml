@@ -9,9 +9,6 @@ Neopolitan.
 Everything you see here is implemented in
 my engine, so it's completely possible.
 
--- p
-<<link|Look at this commit's description :)|https://github.com/InfiniteCoder01/neohtml/commit/ec4df61f1b8d66f03bb2f6bb10d7d06758eaa732>>
-
 -- title
 Stuff that got rejected
 
@@ -20,15 +17,6 @@ Markdown shortcuts
 
 -- code/
 -- class: language-txt
-
-Tripple backqoute (```) for code:
-
-```
-fn main() {
-    println!("Hello, World!");
-}
-```
-
 Markdown-styled [links](https:://example.com)
 
 ## Shorthands for h1-h6

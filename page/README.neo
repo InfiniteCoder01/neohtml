@@ -21,14 +21,35 @@ Neopolitan is Alan's thing, check it out <<link|here|https://www.alanwsmith.com/
 [x] warning
 [x] warnings
 
+[] Show attribute value
+
+[] AccessKey attribute
+[] AutoCapitalize attribute
+[] AutoFocus attribute
+[] By attribute
+[] Cite attribute
+[] ContentEditable attribute
+[] Generic attribute
+[] Link attribute
+[] ShowTitle attribute
+[] Subtitle attribute
+[] Type attribute
+[] Url attribute
+
 -- todo
 -- title: Questions
+[] So, what about ->?
 [] Can hidden contain sections?
+[] Blank lines after metadata/cathegories
 [] image src?
 [] should title have inline tags?
 [] tldr section?
 [] results section?
 [] youtube: attrs?
+
+-- todo
+-- title: Code
+[] Replace sscanf with regex
 
 -- nav
 <<link|Alan|alanwsmith.com>> | <<link|Alan's GitHub|github.com/alanwsmith>>

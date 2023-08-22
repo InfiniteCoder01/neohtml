@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::attribute::Attribute;
 use super::{PageBuildError, PageParseError};
 use itertools::Itertools;
@@ -33,9 +35,6 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: String,
     },
-    Hidden {
-        content: String,
-    },
     Notes {
         class: String,
         attributes: Vec<Attribute>,
@@ -53,6 +52,13 @@ pub enum Section {
     },
     Youtube {
         id: String,
+    },
+
+    Hidden {
+        content: String,
+    },
+    Metadata {
+        data: HashMap<String, String>,
     },
 }
 
@@ -141,9 +147,6 @@ impl Section {
                 attributes: source.next_attrs()?,
                 content: source.next_text_until_section(false)?,
             }),
-            "hidden" => Ok(Self::Hidden {
-                content: source.next_text_until_section(true)?,
-            }),
             "notes" | "warnings" => Ok(Self::Notes {
                 class: section[0..section.len() - 1].to_owned(),
                 attributes: source.next_attrs()?,
@@ -168,6 +171,24 @@ impl Section {
                 id: source
                     .next_line_if_map(super::strip_attr_prefix)?
                     .ok_or(PageParseError::ExpectedVideoID)?,
+            }),
+
+            "hidden" => Ok(Self::Hidden {
+                content: source.next_text_until_section(true)?,
+            }),
+            "metadata" => Ok(Self::Metadata {
+                data: {
+                    let mut meta = HashMap::new();
+                    for metaline in source.next_text_prefixed("--", true)?.split('\n') {
+                        let mut name = String::new();
+                        let mut value = String::new();
+                        scanf::sscanf!(metaline, "{}: {}", name, value).map_err(|_| {
+                            PageParseError::WrongMetadataFormat(metaline.to_owned())
+                        })?;
+                        meta.insert(name, value);
+                    }
+                    meta
+                },
             }),
             _ => Err(PageParseError::UnknownSection(section.to_owned())),
         }
@@ -221,7 +242,7 @@ impl Section {
         }
 
         match self {
-            Section::Text {
+            Self::Text {
                 tag,
                 attributes,
                 content,
@@ -230,7 +251,7 @@ impl Section {
                 attributes!(attributes),
                 text_to_html(content)
             )),
-            Section::TextWrapper {
+            Self::TextWrapper {
                 tag,
                 attributes,
                 content,
@@ -240,7 +261,7 @@ impl Section {
                 title!(attributes),
                 text_to_html(content)
             )),
-            Section::Container {
+            Self::Container {
                 tag,
                 attributes,
                 content,
@@ -256,7 +277,7 @@ impl Section {
                     html
                 },
             )),
-            Section::Code {
+            Self::Code {
                 tag,
                 attributes,
                 content,
@@ -271,9 +292,9 @@ impl Section {
                         }
                 }
             }),
-            Section::Tag { tag, attributes } => Ok(format!("<{tag}{} />", attributes!(attributes))),
+            Self::Tag { tag, attributes } => Ok(format!("<{tag}{} />", attributes!(attributes))),
 
-            Section::Bookmark {
+            Self::Bookmark {
                 attributes,
                 content,
             } => Ok(format!(
@@ -282,8 +303,7 @@ impl Section {
                 title!(attributes, "h3 class = \"bookmarkTitle\""),
                 text_to_html(content),
             )),
-            Section::Hidden { content } => Ok(format!("<!-- {} -->", escape_html(content))),
-            Section::Notes {
+            Self::Notes {
                 class,
                 attributes,
                 content,
@@ -299,7 +319,7 @@ impl Section {
                     ""
                 ),
             )),
-            Section::List {
+            Self::List {
                 tag,
                 attributes,
                 content,
@@ -314,7 +334,7 @@ impl Section {
                     ""
                 ),
             )),
-            Section::Checklist {
+            Self::Checklist {
                 attributes,
                 content,
                 todo,
@@ -340,7 +360,7 @@ impl Section {
                     ""
                 ),
             )),
-            Section::Youtube { id } => Ok(format!(
+            Self::Youtube { id } => Ok(format!(
                 concat!(
                     r#"<iframe width="623" height="350" src="https://www.youtube-nocookie.com/embed/{}" "#,
                     r#"title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; "#,
@@ -348,6 +368,12 @@ impl Section {
                 ),
                 id
             )),
+
+            Self::Hidden { content } => Ok(format!("<!-- {} -->", escape_html(content))),
+            Self::Metadata { data } => {
+                dbg!(data);
+                Ok(String::new())
+            }
         }
     }
 }

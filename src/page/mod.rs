@@ -210,6 +210,10 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(text)
     }
 
+    fn next_text_prefixed(&mut self, prefix: &str, raw: bool) -> Result<String, PageParseError> {
+        self.next_text(|line| line.strip_prefix(prefix), raw)
+    }
+
     fn next_text_until_section(&mut self, raw: bool) -> Result<String, PageParseError> {
         self.next_text_until(has_section_prefix, raw)
     }
@@ -347,6 +351,8 @@ pub enum PageParseError {
     MissingAttributeArgument(String),
     #[error("Unexpected argument '{0}' in attribute '{1}', this attribute is ment to be used without arguments")]
     UnexpectedArgument(String, String),
+    #[error("Wrong metadata format: {0}")]
+    WrongMetadataFormat(String),
     #[error("Title/Subtitle section is empty!")]
     EmptyTitle,
     #[error("Expected video ID")]
