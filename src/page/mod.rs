@@ -280,6 +280,7 @@ impl<R: std::io::BufRead> Reader<R> {
                     if let Some(section) = strip_section_prefix(line) {
                         if let Some(tag) = section.strip_prefix('/') {
                             if tag == end_tag {
+                                self.next_line()?;
                                 break;
                             }
                         }

@@ -33,6 +33,9 @@ pub enum Section {
         attributes: Vec<Attribute>,
         content: String,
     },
+    Hidden {
+        content: String,
+    },
     Notes {
         attributes: Vec<Attribute>,
         content: Vec<String>,
@@ -57,6 +60,13 @@ impl Section {
         source: &mut super::Reader<R>,
         section: &str,
     ) -> Result<Self, PageParseError> {
+        fn map_code_tag(tag: &str) -> &str {
+            match tag {
+                "css" => "style",
+                tag => tag,
+            }
+        }
+
         match section {
             "title" | "subtitle" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "nav" => {
                 Ok(Self::Text {
@@ -91,11 +101,7 @@ impl Section {
                 let attributes = source.next_attrs()?;
                 Ok(match tag {
                     "code" | "pre" | "script" | "html" | "css" => Self::Code {
-                        tag: match tag {
-                            "css" => "style",
-                            tag => tag,
-                        }
-                        .to_owned(),
+                        tag: map_code_tag(tag).to_owned(),
                         attributes,
                         content: source.next_text_until_tag(tag, true)?,
                     },
@@ -106,10 +112,10 @@ impl Section {
                     },
                 })
             }
-            "pre" | "script" => {
+            "code" | "pre" | "script" | "html" | "css" => {
                 let attributes = source.next_attrs()?;
                 Ok(Self::Code {
-                    tag: section.to_owned(),
+                    tag: map_code_tag(section).to_owned(),
                     attributes,
                     content: source.next_text_until_section(true)?,
                 })
@@ -133,6 +139,9 @@ impl Section {
             "bookmark" => Ok(Self::Bookmark {
                 attributes: source.next_attrs()?,
                 content: source.next_text_until_section(false)?,
+            }),
+            "hidden" => Ok(Self::Hidden {
+                content: source.next_text_until_section(true)?,
             }),
             "notes" => Ok(Self::Notes {
                 attributes: source.next_attrs()?,
@@ -163,6 +172,7 @@ impl Section {
     }
 
     pub fn to_html(&self) -> Result<String, PageBuildError> {
+        // * Attrs
         macro_rules! attributes {
             ($attrs: expr) => {
                 $attrs.iter().fold("".to_owned(), |buffer, arg| {
@@ -171,21 +181,41 @@ impl Section {
             };
         }
 
+        macro_rules! attr {
+            ($attrs: expr, $attr: ident) => {
+                $attrs.iter().find_map(|attr| match attr {
+                    Attribute::$attr(value) => Some(value),
+                    _ => None,
+                })
+            };
+        }
+
+        macro_rules! has_attr {
+            ($attrs: expr, $attr: ident) => {
+                $attrs.iter().any(|attr| matches!(attr, Attribute::$attr))
+            };
+        }
+
+        // * Specific attrs
         macro_rules! title {
             ($attrs: expr, $tag: expr) => {
-                $attrs
-                    .iter()
-                    .find_map(|attr| match attr {
-                        Attribute::Title(title) => {
-                            Some(format!("<{}>{}</{}>", $tag, title.as_str(), $tag))
-                        }
-                        _ => None,
-                    })
+                attr!($attrs, Title)
+                    .map(|title| format!("<{}>{}</{}>", $tag, title.as_str(), $tag))
                     .unwrap_or_default()
             };
             ($attrs: expr) => {
                 title!($attrs, "h4")
             };
+        }
+
+        // * Utils
+        fn format_code(content: &str, title: String, attributes: String) -> String {
+            format!(
+                "<pre>{}<code{}>{}</code></pre>",
+                title,
+                attributes,
+                escape_html(content),
+            )
         }
 
         match self {
@@ -229,13 +259,15 @@ impl Section {
                 attributes,
                 content,
             } => Ok(match tag.as_str() {
-                "code" => format!(
-                    "<pre>{}<code{}>{}</code></pre>",
-                    title!(attributes),
-                    attributes!(attributes),
-                    escape_html(content),
-                ),
-                tag => format!("<{tag}{}>{}</{tag}>", attributes!(attributes), content),
+                "code" => format_code(content, title!(attributes), attributes!(attributes)),
+                tag => {
+                    format!("<{tag}{}>{}</{tag}>", attributes!(attributes), content)
+                        + &if has_attr!(attributes, Show) {
+                            format_code(content, title!(attributes), String::new())
+                        } else {
+                            String::new()
+                        }
+                }
             }),
             Section::Tag { tag, attributes } => Ok(format!("<{tag}{} />", attributes!(attributes))),
 
@@ -248,6 +280,7 @@ impl Section {
                 title!(attributes, "h3 class = \"bookmarkTitle\""),
                 text_to_html(content),
             )),
+            Section::Hidden { content } => Ok(format!("<!-- {} -->", escape_html(content))),
             Section::Notes {
                 attributes,
                 content,
@@ -303,7 +336,7 @@ impl Section {
             )),
             Section::Youtube { id } => Ok(format!(
                 concat!(
-                    r#"<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/{}" "#,
+                    r#"<iframe width="623" height="350" src="https://www.youtube-nocookie.com/embed/{}" "#,
                     r#"title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; "#,
                     r#"encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen=""></iframe>"#,
                 ),
@@ -320,25 +353,65 @@ pub fn escape_html(code: &str) -> String {
 }
 
 pub fn text_to_html(text: &str) -> String {
-    macro_rules! regex_replace {
-        ($text: ident, $pattern: literal, $captures: ident => $replacement: expr) => {
-            let $text = regex::Regex::new(&escape_html($pattern))
-                .unwrap()
-                .replace_all(&$text, |$captures: &regex::Captures| $replacement);
+    fn regex_replace<'a>(
+        text: &'a str,
+        pattern: &str,
+        replacer: impl Fn(&regex::Captures) -> String,
+    ) -> std::borrow::Cow<'a, str> {
+        regex::Regex::new(&escape_html(pattern))
+            .unwrap()
+            .replace_all(text, replacer)
+    }
+
+    macro_rules! format_attrs {
+        ($attrs: expr) => {
+            regex_replace(&$attrs, r"(\w+)\s*:\s*(\w+)", |captures| {
+                format!("{} = \"{}\"", &captures[1], &captures[2])
+            })
+        };
+    }
+
+    macro_rules! wrap_tag {
+        ($tag: expr, $attrs: expr, $content: expr) => {
+            format!("<{} {}>{}</{}>", $tag, $attrs, $content, $tag)
         };
     }
 
     let text = escape_html(text);
-    regex_replace!(
-        text,
-        r"<<link\s*\|([^|]*)\w*\|([^|]*)\s*>>",
-        caps => format!("<a href = \"{}\">{}</a>", &caps[2], &caps[1])
-    );
-    regex_replace!(
-        text,
-        r"\[([^\]]*)\]\(([^\]]*)\)",
-        caps => format!("<a href = \"{}\">{}</a>", &caps[2], &caps[1])
-    );
+
+    // Tag
+    let text =
+        regex_replace(
+            &text,
+            r"<<(\w+)\s*\|([^|]*)\w*\|([^|]*)\s*>>",
+            |captures| match &captures[1] {
+                "link" => wrap_tag!("a", format!("href = \"{}\"", &captures[3]), &captures[2]),
+                tag => wrap_tag!(tag, format_attrs!(captures[3]), &captures[2]),
+            },
+        );
+
+    // MD Link
+    let text = regex_replace(&text, r"\[([^\]]*)\]\(([^\]]*)\)", |captures| {
+        wrap_tag!("a", format!("href = \"{}\"", &captures[2]), &captures[1])
+    });
+
+    // Shortcuts
+    let text = regex_replace(&text, r"\*([^\*]*)\*([^\*]*)\*", |captures| {
+        wrap_tag!("strong", format_attrs!(captures[2]), &captures[1])
+    });
+    let text = regex_replace(&text, r"_([^_]*)_([^_]*)_", |captures| {
+        wrap_tag!("em", format_attrs!(captures[2]), &captures[1])
+    });
+    let text = regex_replace(&text, r"\~([^\~]*)\~([^\~]*)\~", |captures| {
+        wrap_tag!("s", format_attrs!(captures[2]), &captures[1])
+    });
+    let text = regex_replace(&text, r"`([^`]*)`([^`]*)`", |captures| {
+        format!(
+            "<pre><code {}>{}</code></pre>",
+            (format_attrs!(captures[2])),
+            (&captures[1])
+        )
+    });
     text.replace('\n', "<br>")
 }
 
