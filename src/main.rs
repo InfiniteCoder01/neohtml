@@ -1,5 +1,5 @@
 use anyhow::Context;
-use neohtml::page::Page;
+use oreneo::page::Page;
 
 fn main() -> anyhow::Result<()> {
     for file in std::fs::read_dir("page")
