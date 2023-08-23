@@ -2,8 +2,14 @@ use anyhow::Context;
 use oreneo::page::Page;
 
 fn main() -> anyhow::Result<()> {
-    for file in std::fs::read_dir("page")
-        .context("Failed to read page folder")?
+    let args = std::env::args().collect::<Vec<_>>();
+    if args.len() > 2 {
+        println!("Usage: oreneo [PAGE_DIR]. PAGE_DIR is page by default")
+    }
+    let page_dir = args.get(1).map_or("page", |page_dir| page_dir.as_str());
+
+    for file in std::fs::read_dir(page_dir)
+        .context("Failed to read page dir")?
         .flatten()
     {
         let page_path = file.path();
