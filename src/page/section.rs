@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::attribute::Attribute;
-use super::{PageBuildError, PageParseError};
+use super::{relative_path_to, PageBuildError, PageParseError};
 use itertools::Itertools;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -50,6 +50,11 @@ pub enum Section {
         content: Vec<String>,
         todo: bool,
     },
+    Image {
+        src: String,
+        attributes: Vec<Attribute>,
+    },
+
     Youtube {
         id: String,
     },
@@ -138,7 +143,7 @@ impl Section {
                     content: source.next_text_until_tag("```", true)?,
                 })
             }
-            "hr" | "image" => {
+            "hr" => {
                 let attributes = source.next_attrs()?;
                 Ok(Self::Tag {
                     tag: section.to_owned(),
@@ -170,6 +175,15 @@ impl Section {
                     .next_list(|line| line.starts_with("[]") || line.starts_with("[x]"))?,
                 todo: section == "todo",
             }),
+            "image" => {
+                let src = source
+                    .next_line_if_map(super::strip_attr_prefix)?
+                    .ok_or(PageParseError::ExpectedImageSource)?;
+                Ok(Self::Image {
+                    src,
+                    attributes: source.next_attrs()?,
+                })
+            }
             "youtube" => Ok(Self::Youtube {
                 id: source
                     .next_line_if_map(super::strip_attr_prefix)?
@@ -205,7 +219,7 @@ impl Section {
         }
     }
 
-    pub fn to_html(&self) -> Result<String, PageBuildError> {
+    pub fn to_html(&self, project_root: &str) -> Result<String, PageBuildError> {
         // * Attrs
         macro_rules! attributes {
             ($attrs: expr) => {
@@ -260,7 +274,7 @@ impl Section {
             } => Ok(format!(
                 "<{tag}{}>{}</{tag}>",
                 attributes!(attributes),
-                text_to_html(content)
+                text_to_html(project_root, content)
             )),
             Self::TextWrapper {
                 tag,
@@ -270,7 +284,7 @@ impl Section {
                 "<{tag}{}>{}<p>{}</p></{tag}>",
                 attributes!(attributes),
                 title!(attributes),
-                text_to_html(content)
+                text_to_html(project_root, content)
             )),
             Self::Container {
                 tag,
@@ -283,7 +297,7 @@ impl Section {
                 {
                     let mut html = String::new();
                     for section in content {
-                        html.push_str(&section.to_html()?);
+                        html.push_str(&section.to_html(project_root)?);
                     }
                     html
                 },
@@ -312,7 +326,7 @@ impl Section {
                 "<div class = \"bookmark\"{}>{}{}</div>",
                 attributes!(attributes),
                 title!(attributes, "h3 class = \"bookmarkTitle\""),
-                text_to_html(content),
+                text_to_html(project_root, content),
             )),
             Self::Notes {
                 class,
@@ -324,9 +338,10 @@ impl Section {
                 attributes!(attributes),
                 title!(attributes),
                 join_iter(
-                    content
-                        .iter()
-                        .map(|item| format!("<li><p>{}</p></li>", text_to_html(item))),
+                    content.iter().map(|item| format!(
+                        "<li><p>{}</p></li>",
+                        text_to_html(project_root, item)
+                    )),
                     ""
                 ),
             )),
@@ -339,9 +354,10 @@ impl Section {
                 attributes!(attributes),
                 title!(attributes),
                 join_iter(
-                    content
-                        .iter()
-                        .map(|item| format!("<li><p>{}</p></li>", text_to_html(item))),
+                    content.iter().map(|item| format!(
+                        "<li><p>{}</p></li>",
+                        text_to_html(project_root, item)
+                    )),
                     ""
                 ),
             )),
@@ -363,6 +379,7 @@ impl Section {
                             ""
                         },
                         text_to_html(
+                            project_root,
                             item.strip_prefix("[]")
                                 .or_else(|| item.strip_prefix("[x]"))
                                 .unwrap()
@@ -370,6 +387,11 @@ impl Section {
                     )),
                     ""
                 ),
+            )),
+            Self::Image { src, attributes } => Ok(format!(
+                "<image src = \"{}\"{} />",
+                format_link(project_root, src),
+                attributes!(attributes)
             )),
             Self::Youtube { id } => Ok(format!(
                 concat!(
@@ -393,7 +415,7 @@ pub fn escape_html(code: &str) -> String {
         .replace('>', "&gt")
 }
 
-pub fn text_to_html(text: &str) -> String {
+pub fn text_to_html(project_root: &str, text: &str) -> String {
     fn regex_replace<'a>(
         text: &'a str,
         pattern: &str,
@@ -426,7 +448,11 @@ pub fn text_to_html(text: &str) -> String {
             &text,
             r"<<(\w+)\s*\|([^|]*)\w*\|([^|]*)\s*>>",
             |captures| match &captures[1] {
-                "link" => wrap_tag!("a", format!("href = \"{}\"", &captures[3]), &captures[2]),
+                "link" => wrap_tag!(
+                    "a",
+                    format!("href = \"{}\"", &format_link(project_root, &captures[3])),
+                    &captures[2]
+                ),
                 tag => wrap_tag!(tag, format_attrs!(captures[3]), &captures[2]),
             },
         );
@@ -454,6 +480,14 @@ pub fn text_to_html(text: &str) -> String {
         )
     });
     text.replace('\n', "<br>")
+}
+
+pub fn format_link(project_root: &str, link: &str) -> String {
+    if let Some(local_url) = link.strip_prefix('/') {
+        return relative_path_to(project_root, local_url);
+    }
+
+    link.to_owned()
 }
 
 pub fn join_iter(iter: impl Iterator<Item = String>, intersperse: &str) -> String {

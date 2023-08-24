@@ -9,14 +9,14 @@ Neopolitan to HTML converter
 Neopolitan is Alan's thing, check it out <<link|here|https://www.alanwsmith.com/neopolitan>>
 
 -- p
-Checkout features I would like to see in Neopolitan <<link|here|https://infinitecoder01.github.io/OreNeo/page/neopolitan-wish-features.html>>.
+Checkout features I would like to see in Neopolitan <<link|here|/neopolitan-wish-features.html>>.
 GitHub repo for this page is <<link|here|https://github.com/InfiniteCoder01/OreNeo/>>.
 
 -- todo
 -- title: TODO
 
-[] Link basename
-[] image: The first item is a basename that is used to search for the image and create the full path which is passed to the template
+[x] Link basename
+[x] image: The first item is a basename that is used to search for the image and create the full path which is passed to the template
 
 [x] hidden (comment)
 [x] metadata (Just here, no output)
@@ -44,8 +44,9 @@ GitHub repo for this page is <<link|here|https://github.com/InfiniteCoder01/OreN
 -- title: Questions
 [] So, what about ->?
 [] Can hidden contain sections?
-[] Blank lines after metadata/cathegories
+[] Blank lines after metadata/cathegories?
 [] image src?
+[] can image have a title?
 [] should title have inline tags?
 [] tldr section?
 [] results section?

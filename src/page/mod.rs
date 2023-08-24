@@ -38,6 +38,14 @@ pub fn strip_attr_prefix(line: &str) -> Option<&str> {
         .map(|line| line.trim())
 }
 
+pub fn relative_path_to(base: &str, path: &str) -> String {
+    pathdiff::diff_paths(path, base)
+        .ok_or(PageBuildError::RelativePathNotFound(path.to_owned()))
+        .expect("Please, don't! Your root path or page path is messed up!")
+        .to_string_lossy()
+        .into_owned()
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Page {
     sections: Vec<Section>,
@@ -60,7 +68,7 @@ impl Page {
         })
     }
 
-    pub fn to_html(&self) -> Result<HtmlPage, PageBuildError> {
+    pub fn to_html(&self, project_root: &str) -> Result<HtmlPage, PageBuildError> {
         let mut page = HtmlPage::new();
         page.add_head_link(
             "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/monokai.min.css",
@@ -69,16 +77,16 @@ impl Page {
         page.add_script_link(
             "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js",
         );
-        page.add_head_link("global.css", "stylesheet");
+        page.add_head_link(relative_path_to(project_root, "global.css"), "stylesheet");
         page.add_script_literal("hljs.highlightAll();");
         for section in &self.sections {
-            page.add_html(section.to_html()?);
+            page.add_html(section.to_html(project_root)?);
         }
         Ok(page)
     }
 
-    pub fn to_html_string(&self) -> Result<String, PageBuildError> {
-        Ok(self.to_html()?.to_html_string())
+    pub fn to_html_string(&self, page_path: &str) -> Result<String, PageBuildError> {
+        Ok(self.to_html(page_path)?.to_html_string())
     }
 }
 
@@ -355,9 +363,14 @@ pub enum PageParseError {
     WrongMetadataFormat(String),
     #[error("Title/Subtitle section is empty!")]
     EmptyTitle,
+    #[error("Expected image source")]
+    ExpectedImageSource,
     #[error("Expected video ID")]
     ExpectedVideoID,
 }
 
 #[derive(Error, Debug)]
-pub enum PageBuildError {}
+pub enum PageBuildError {
+    #[error("Failed to find relative path to project file from file '{0}'")]
+    RelativePathNotFound(String),
+}
