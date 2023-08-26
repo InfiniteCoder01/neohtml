@@ -15,8 +15,10 @@ GitHub repo for this page is <<link|here|https://github.com/InfiniteCoder01/OreN
 -- todo
 -- title: TODO
 
+[] Head section
 [x] Link basename
-[x] image: The first item is a basename that is used to search for the image and create the full path which is passed to the template
+[x] image: Link
+[] image: Basename?
 
 [x] hidden (comment)
 [x] metadata (Just here, no output)
@@ -42,15 +44,7 @@ GitHub repo for this page is <<link|here|https://github.com/InfiniteCoder01/OreN
 
 -- todo
 -- title: Questions
-[] So, what about ->?
-[] Can hidden contain sections?
-[] Blank lines after metadata/cathegories?
-[] image src?
-[] can image have a title?
-[] should title have inline tags?
-[] tldr section?
-[] results section?
-[] youtube: attrs?
+[] Where do you get image if it's specified by basename, and how do you support links? It was still buffering when you answered :(
 
 -- todo
 -- title: Code

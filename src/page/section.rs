@@ -248,7 +248,7 @@ impl Section {
         macro_rules! title {
             ($attrs: expr, $tag: expr) => {
                 attr!($attrs, Title)
-                    .map(|title| format!("<{}>{}</{}>", $tag, title.as_str(), $tag))
+                    .map(|title| format!("<{}>{}</{}>", $tag, text_to_html(project_root, &title), $tag))
                     .unwrap_or_default()
             };
             ($attrs: expr) => {
@@ -389,7 +389,8 @@ impl Section {
                 ),
             )),
             Self::Image { src, attributes } => Ok(format!(
-                "<image src = \"{}\"{} />",
+                "{}<image src = \"{}\"{} />",
+                title!(attributes, "h2 class = \"imageTitle\""),
                 format_link(project_root, src),
                 attributes!(attributes)
             )),
@@ -457,12 +458,11 @@ pub fn text_to_html(project_root: &str, text: &str) -> String {
             },
         );
 
-    // MD Link
-    let text = regex_replace(&text, r"\[([^\]]*)\]\(([^\]]*)\)", |captures| {
+    // Shortcuts
+    let text = regex_replace(&text, r">([^>]*)>([^>]*)>", |captures| {
         wrap_tag!("a", format!("href = \"{}\"", &captures[2]), &captures[1])
     });
 
-    // Shortcuts
     let text = regex_replace(&text, r"\*([^\*]*)\*([^\*]*)\*", |captures| {
         wrap_tag!("strong", format_attrs!(captures[2]), &captures[1])
     });

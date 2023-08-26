@@ -9,15 +9,11 @@ use thiserror::Error;
 use self::attribute::Attribute;
 
 pub fn has_section_prefix(line: &str) -> bool {
-    line.starts_with("->")
-        || line.starts_with("--")
-        || line.starts_with("```")
-        || line.starts_with('#')
+    line.starts_with("--") || line.starts_with("```") || line.starts_with('#')
 }
 
 pub fn strip_section_prefix(line: &str) -> Option<&str> {
-    line.strip_prefix("->")
-        .or_else(|| line.strip_prefix("--"))
+    line.strip_prefix("--")
         .or_else(|| {
             if line.starts_with("```") {
                 Some(line)
@@ -29,13 +25,11 @@ pub fn strip_section_prefix(line: &str) -> Option<&str> {
 }
 
 pub fn has_attr_prefix(line: &str) -> bool {
-    line.starts_with("->") || line.starts_with("--")
+    line.starts_with("--")
 }
 
 pub fn strip_attr_prefix(line: &str) -> Option<&str> {
-    line.strip_prefix("->")
-        .or_else(|| line.strip_prefix("--"))
-        .map(|line| line.trim())
+    line.strip_prefix("--").map(|line| line.trim())
 }
 
 pub fn relative_path_to(base: &str, path: &str) -> String {
@@ -219,7 +213,16 @@ impl<R: std::io::BufRead> Reader<R> {
     }
 
     fn next_text_prefixed(&mut self, prefix: &str, raw: bool) -> Result<String, PageParseError> {
-        self.next_text(|line| line.strip_prefix(prefix), raw)
+        self.next_text(
+            |line| {
+                if line.trim().is_empty() && raw {
+                    None
+                } else {
+                    line.strip_prefix(prefix)
+                }
+            },
+            raw,
+        )
     }
 
     fn next_text_until_section(&mut self, raw: bool) -> Result<String, PageParseError> {
