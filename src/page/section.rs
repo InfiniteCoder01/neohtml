@@ -459,20 +459,21 @@ pub fn text_to_html(project_root: &str, text: &str) -> String {
         );
 
     // Shortcuts
-    let text = regex_replace(&text, r">([^>]*)>([^>]*)>", |captures| {
-        wrap_tag!("a", format!("href = \"{}\"", &captures[2]), &captures[1])
+    let text = regex_replace(&text, r">(.*?)>(.*?)>", |captures| {
+        let (link, attrs) = &captures[2].split_once('|').unwrap_or((&captures[2], ""));
+        wrap_tag!("a", format!("href = \"{}\"{}", link, format_attrs!(attrs)), &captures[1])
     });
 
-    let text = regex_replace(&text, r"\*([^\*]*)\*([^\*]*)\*", |captures| {
+    let text = regex_replace(&text, r"\*(.*?)\*(.*?)\*", |captures| {
         wrap_tag!("strong", format_attrs!(captures[2]), &captures[1])
     });
-    let text = regex_replace(&text, r"_([^_]*)_([^_]*)_", |captures| {
+    let text = regex_replace(&text, r"_(.*?)_(.*?)_", |captures| {
         wrap_tag!("em", format_attrs!(captures[2]), &captures[1])
     });
-    let text = regex_replace(&text, r"\~([^\~]*)\~([^\~]*)\~", |captures| {
+    let text = regex_replace(&text, r"\~(.*?)\~(.*?)\~", |captures| {
         wrap_tag!("s", format_attrs!(captures[2]), &captures[1])
     });
-    let text = regex_replace(&text, r"`([^`]*)`([^`]*)`", |captures| {
+    let text = regex_replace(&text, r"`(.*?)`(.*?)`", |captures| {
         format!(
             "<pre><code {}>{}</code></pre>",
             (format_attrs!(captures[2])),
