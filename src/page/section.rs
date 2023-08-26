@@ -248,7 +248,14 @@ impl Section {
         macro_rules! title {
             ($attrs: expr, $tag: expr) => {
                 attr!($attrs, Title)
-                    .map(|title| format!("<{}>{}</{}>", $tag, text_to_html(project_root, &title), $tag))
+                    .map(|title| {
+                        format!(
+                            "<{}>{}</{}>",
+                            $tag,
+                            text_to_html(project_root, &title),
+                            $tag
+                        )
+                    })
                     .unwrap_or_default()
             };
             ($attrs: expr) => {
@@ -429,7 +436,7 @@ pub fn text_to_html(project_root: &str, text: &str) -> String {
 
     macro_rules! format_attrs {
         ($attrs: expr) => {
-            regex_replace(&$attrs, r"(\w+)\s*:\s*(\w+)", |captures| {
+            regex_replace(&$attrs, r"(\w+)\s*:\s*(\w+)\|?", |captures| {
                 format!("{} = \"{}\"", &captures[1], &captures[2])
             })
         };
@@ -441,27 +448,34 @@ pub fn text_to_html(project_root: &str, text: &str) -> String {
         };
     }
 
+    fn make_link(project_root: &str, text: &str, link: &str) -> String {
+        let (link, attrs) = link.split_once('|').unwrap_or((link, ""));
+        wrap_tag!(
+            "a",
+            format!(
+                "href = \"{}\"{}",
+                format_link(project_root, link),
+                format_attrs!(attrs)
+            ),
+            text
+        )
+    }
+
     let text = escape_html(text);
 
     // Tag
-    let text =
-        regex_replace(
-            &text,
-            r"<<(\w+)\s*\|([^|]*)\w*\|([^|]*)\s*>>",
-            |captures| match &captures[1] {
-                "link" => wrap_tag!(
-                    "a",
-                    format!("href = \"{}\"", &format_link(project_root, &captures[3])),
-                    &captures[2]
-                ),
-                tag => wrap_tag!(tag, format_attrs!(captures[3]), &captures[2]),
-            },
-        );
+    let text = regex_replace(
+        &text,
+        r"<<(\w+)\s*\|(.*?)\|(.*?)>>",
+        |captures| match &captures[1] {
+            "link" => make_link(project_root, &captures[2], &captures[3]),
+            tag => wrap_tag!(tag, format_attrs!(captures[3]), &captures[2]),
+        },
+    );
 
     // Shortcuts
     let text = regex_replace(&text, r">(.*?)>(.*?)>", |captures| {
-        let (link, attrs) = &captures[2].split_once('|').unwrap_or((&captures[2], ""));
-        wrap_tag!("a", format!("href = \"{}\"{}", link, format_attrs!(attrs)), &captures[1])
+        make_link(project_root, &captures[1], &captures[2])
     });
 
     let text = regex_replace(&text, r"\*(.*?)\*(.*?)\*", |captures| {
