@@ -1,0 +1,59 @@
+-- title
+Things to do for OreNeo
+
+-- todo
+-- title: TODO
+[] Do some css stuff, maybe more themes.
+[] highlight.js themes
+
+-- todo
+-- title: Ask
+[] image: Basename?
+[] audio section?
+[] blurb section???
+[] Where do you get image if it's specified by basename, and how do you support links? It was still buffering when you answered :(
+
+-- todo
+-- title: Sections
+
+[] head
+[] canvas
+[] vimeo
+[] config
+
+[] details
+[] dlist
+[] ext
+[] head
+[] images
+[] include
+[] menu
+[] object
+[] ref
+[] results
+[] startneoexample
+[] table
+[] text area
+[] widget
+
+-- todo
+--title: Attributes
+
+[] Show attribute values (above, below)
+
+[] AccessKey attribute
+[] AutoCapitalize attribute
+[] AutoFocus attribute
+[] By attribute
+[] Cite attribute
+[] ContentEditable attribute
+[] Generic attribute
+[] Link attribute
+[] ShowTitle attribute
+[] Subtitle attribute
+[] Type attribute
+[] Url attribute
+
+-- todo
+-- title: Code Quality
+[] Replace sscanf with regex

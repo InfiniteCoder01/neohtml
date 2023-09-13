@@ -17,6 +17,14 @@ Markdown shortcuts
 
 -- code/
 -- class: language-txt
+Tripple backqoute (```) for code:
+
+```
+fn main() {
+    println!("Hello, World!");
+}
+```
+
 Markdown-styled [links](https:://example.com)
 
 ## Shorthands for h1-h6
@@ -29,7 +37,7 @@ Markdown-styled [links](https:://example.com)
 --h3
 Live examples:
 
-Tripple backqoute (```) for code:
+Tripple backqoute for code:
 
 ```
 fn main() {
