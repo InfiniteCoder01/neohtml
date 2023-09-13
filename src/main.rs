@@ -1,59 +1,65 @@
 use anyhow::Context;
 use oreneo::page::Page;
 
-fn parse_dir<RP, PP>(project_root: RP, path: PP) -> anyhow::Result<()>
+fn parse_dir<RP, OP, PP>(project_root: RP, output_root: OP, path: PP) -> anyhow::Result<()>
 where
     RP: AsRef<std::path::Path>,
+    OP: AsRef<std::path::Path>,
     PP: AsRef<std::path::Path>,
 {
     let project_root = project_root.as_ref();
-    for file in std::fs::read_dir(path)
+    let output_root = output_root.as_ref();
+    let path = path.as_ref();
+    for file in std::fs::read_dir(project_root.join(path))
         .context("Failed to read page dir")?
         .flatten()
     {
-        let page_path = file.path();
+        let file_name = file.file_name();
+        let file_name = file_name.to_string_lossy();
+        let file_name = file_name.as_ref();
+        let page_path = path.join(file_name);
         if page_path.extension().and_then(|ext| ext.to_str()) == Some("neo") {
-            let page =
-                Page::load(&page_path).context(format!("Failed to parse page {:?}!", page_path))?;
+            let page = Page::load(&project_root.join(&page_path))
+                .context(format!("Failed to parse page {:?}!", page_path))?;
 
             let generated_html = page
                 .to_html_string(
-                    pathdiff::diff_paths(
-                        page_path.parent().context(format!(
-                            "Failed to get page's parent! Page path: {:?}",
-                            page_path
-                        ))?,
-                        project_root,
+                    &pathdiff::diff_paths(
+                        ".",
+                        page_path.parent().context("Page has no parent???")?,
                     )
-                    .context(format!(
-                        "Failed to determine relative path of page {:?}!",
-                        page_path
-                    ))?
-                    .as_path()
-                    .to_string_lossy()
-                    .as_ref(),
+                    .context("Failed to construct relative path of project root for page!")?,
                 )
                 .context(format!("Failed to build page {:?}!", page_path))?;
 
-            let html_path = page_path.with_extension("html");
+            let html_path = output_root.join(page_path.with_extension("html"));
             std::fs::write(&html_path, generated_html)
                 .context(format!("Failed to write page {html_path:?}!"))?;
         } else if page_path.is_dir() {
-            parse_dir(project_root, page_path)?;
+            parse_dir(project_root, output_root, page_path)?;
         }
     }
 
     Ok(())
 }
 
+use clap::Parser;
+
+/// Neopolitan parser and HTML generator
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct CliArgs {
+    /// Page directory. "page" by default
+    #[arg(default_value = "page")]
+    page_dir: String,
+
+    /// Output directory. "html" by default
+    #[arg(short, long, default_value = "html")]
+    output: String,
+}
+
 fn main() -> anyhow::Result<()> {
-    let args = std::env::args().collect::<Vec<_>>();
-    if args.len() > 2 {
-        println!("Usage: oreneo [PAGE_DIR]. PAGE_DIR is page by default")
-    }
-
-    let page_dir = args.get(1).map_or("page", |page_dir| page_dir.as_str());
-    parse_dir(page_dir, page_dir)?;
-
+    let args = CliArgs::parse();
+    parse_dir(&args.page_dir, &args.output, ".")?;
     Ok(())
 }

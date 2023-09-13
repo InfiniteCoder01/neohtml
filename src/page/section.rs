@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-
 use super::attribute::Attribute;
-use super::{relative_path_to, PageBuildError, PageParseError};
+use super::{PageBuildError, PageParseError};
 use itertools::Itertools;
+use std::collections::HashMap;
+use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Section {
@@ -219,7 +219,7 @@ impl Section {
         }
     }
 
-    pub fn to_html(&self, project_root: &str) -> Result<String, PageBuildError> {
+    pub fn to_html(&self, project_root: &Path) -> Result<String, PageBuildError> {
         // * Attrs
         macro_rules! attributes {
             ($attrs: expr) => {
@@ -423,7 +423,7 @@ pub fn escape_html(code: &str) -> String {
         .replace('>', "&gt")
 }
 
-pub fn text_to_html(project_root: &str, text: &str) -> String {
+pub fn text_to_html(project_root: &Path, text: &str) -> String {
     fn regex_replace<'a>(
         text: &'a str,
         pattern: &str,
@@ -448,7 +448,7 @@ pub fn text_to_html(project_root: &str, text: &str) -> String {
         };
     }
 
-    fn make_link(project_root: &str, text: &str, link: &str) -> String {
+    fn make_link(project_root: &Path, text: &str, link: &str) -> String {
         let (link, attrs) = link.split_once('|').unwrap_or((link, ""));
         wrap_tag!(
             "a",
@@ -497,9 +497,12 @@ pub fn text_to_html(project_root: &str, text: &str) -> String {
     text.replace('\n', "<br>")
 }
 
-pub fn format_link(project_root: &str, link: &str) -> String {
+pub fn format_link(project_root: &Path, link: &str) -> String {
     if let Some(local_url) = link.strip_prefix('/') {
-        return relative_path_to(project_root, local_url);
+        return project_root
+            .join(Path::new(local_url))
+            .to_string_lossy()
+            .into_owned();
     }
 
     link.to_owned()

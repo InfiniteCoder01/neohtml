@@ -19,7 +19,7 @@ categories = [
 [dependencies]
 anyhow = "1.0.75"
 build_html = "2.4.0"
-clap = "4.4.3"
+clap = { version = "4.4.3", features = ["derive"] }
 itertools = "0.11.0"
 pathdiff = "0.2.1"
 regex = "1.9.3"
