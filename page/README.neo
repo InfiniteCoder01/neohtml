@@ -2,7 +2,7 @@
 OreNeo
 
 -- subtitle
-Neopolitan to HTML converter
+Neopolitan parser and HTML generator
 
 -- note
 -- title: NOTE
@@ -20,12 +20,26 @@ GitHub repo for this page is >here>https://github.com/InfiniteCoder01/OreNeo/>.
 [x] image: Link
 [] image: Basename?
 
-[x] hidden (comment)
-[x] metadata (Just here, no output)
-[x] categories (Just here, no output)
+[] audio section?
+[] blurb section???
+[] canvas
 [] vimeo
-[x] warning
-[x] warnings
+[] config
+
+[] details
+[] dlist
+[] ext
+[] head
+[] images
+[] include
+[] menu
+[] object
+[] ref
+[] results
+[] startneoexample
+[] table
+[] text area
+[] widget
 
 [] Show attribute values (above, below)
 

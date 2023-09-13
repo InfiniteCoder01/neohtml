@@ -16,10 +16,8 @@ where
             let page =
                 Page::load(&page_path).context(format!("Failed to parse page {:?}!", page_path))?;
 
-            let html_path = page_path.with_extension("html");
-            std::fs::write(
-                &html_path,
-                page.to_html_string(
+            let generated_html = page
+                .to_html_string(
                     pathdiff::diff_paths(
                         page_path.parent().context(format!(
                             "Failed to get page's parent! Page path: {:?}",
@@ -35,9 +33,11 @@ where
                     .to_string_lossy()
                     .as_ref(),
                 )
-                .context(format!("Failed to build page {:?}!", page_path))?,
-            )
-            .context(format!("Failed to write page {html_path:?}!"))?;
+                .context(format!("Failed to build page {:?}!", page_path))?;
+
+            let html_path = page_path.with_extension("html");
+            std::fs::write(&html_path, generated_html)
+                .context(format!("Failed to write page {html_path:?}!"))?;
         } else if page_path.is_dir() {
             parse_dir(project_root, page_path)?;
         }
