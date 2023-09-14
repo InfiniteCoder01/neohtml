@@ -57,3 +57,4 @@ Things to do for OreNeo
 -- todo
 -- title: Code Quality
 [] Replace sscanf with regex
+[] Maybe get rid of pathdiff?
