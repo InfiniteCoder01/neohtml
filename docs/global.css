@@ -7,7 +7,6 @@
   --bookmark-bg: #333;
   --note-bg: #829;
   --warning-bg: #bbbb00;
-  --code-bg: #383930;
 
   --border: #fff;
 }
@@ -85,9 +84,8 @@ a {
 /* -------------------------------------- Blocks -------------------------------------- */
 code {
   margin-top: 0;
-  background-color: var(--code-bg);
-  border-radius: 0.5rem;
-  padding: 1.4rem;
+  border-radius: 6px;
+  padding: 0 6px;
 }
 
 .hljs {

@@ -58,7 +58,7 @@ impl Page {
     pub fn to_html(&self, project_root: &Path) -> Result<HtmlPage, PageBuildError> {
         let mut page = HtmlPage::new();
         page.add_head_link(
-            "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/monokai.min.css",
+            "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css",
             "stylesheet",
         );
         page.add_script_link(

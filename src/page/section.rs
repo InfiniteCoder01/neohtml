@@ -489,7 +489,7 @@ pub fn text_to_html(project_root: &Path, text: &str) -> String {
     });
     let text = regex_replace(&text, r"`(.*?)`(.*?)`", |captures| {
         format!(
-            "<pre><code {}>{}</code></pre>",
+            "<code {}>{}</code>",
             (format_attrs!(captures[2])),
             (&captures[1])
         )
