@@ -74,7 +74,6 @@ h4 {
 p {
   font-size: 1rem;
   line-height: 1.6;
-  /* margin: auto; */
 }
 
 a {
@@ -85,6 +84,7 @@ a {
 /* -------------------------------------- Blocks -------------------------------------- */
 code {
   margin-top: 0;
+  background-color: var(--code-bg);
   border-radius: 6px;
   padding: 0 6px;
 }
