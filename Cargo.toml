@@ -1,6 +1,6 @@
 [package]
 name = "oreneo"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 authors = ["InfiniteCoder <nayka.0.lobach.01@gmail.com>"]
 description = "Generate HTML from Neopolitan"
