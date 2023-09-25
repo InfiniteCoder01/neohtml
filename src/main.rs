@@ -35,7 +35,7 @@ where
             let html_path = output_root.join(page_path.with_extension("html"));
             std::fs::write(&html_path, generated_html)
                 .context(format!("Failed to write page {html_path:?}!"))?;
-        } else if page_path.is_dir() {
+        } else if project_root.join(&page_path).is_dir() {
             parse_dir(project_root, output_root, page_path)?;
         }
     }
