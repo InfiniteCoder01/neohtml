@@ -8,6 +8,13 @@ Neopolitan parser and HTML generator
 -- title: NOTE
 Neopolitan is Alan's thing, check it out >here>https://www.alanwsmith.com/neopolitan>
 
+
+-- p
+-- title: Usage:
+Run `oreneo --help`` to see usage.
+`global.css`` should be placed into the root of your page to customize it's look.
+In the future I will support multiple themes, for now use one >here>https://github.com/InfiniteCoder01/OreNeo/blob/master/docs/global.css>.
+
 -- p
 Checkout features I would like to see in Neopolitan >here>/wish-features.html>.
 
