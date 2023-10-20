@@ -10,22 +10,20 @@ Everything you see here is implemented in
 my engine, so it's completely possible.
 
 -- title
-Stuff that got rejected
+Stuff that got rejected, but is still supported by my engine
 
 -- subtitle
 Markdown shortcuts
 
 -- code/
--- class: language-txt
-Tripple backqoute (```) for code:
+-- class: language-markdown
+Tripple backqoute for code:
 
 ```
 fn main() {
     println!("Hello, World!");
 }
 ```
-
-Markdown-styled [links](https:://example.com)
 
 ## Shorthands for h1-h6
 ## With
@@ -34,7 +32,7 @@ Markdown-styled [links](https:://example.com)
 
 -- /code
 
---h3
+-- h3
 Live examples:
 
 Tripple backqoute for code:
@@ -44,8 +42,6 @@ fn main() {
     println!("Hello, World!");
 }
 ```
-
-Markdown-styled [links](https:://example.com)
 
 ## Shorthands for h1-h6
 ## With

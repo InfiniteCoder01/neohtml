@@ -1,5 +1,3 @@
-pub mod attribute;
-pub mod section;
 use build_html::Html;
 use build_html::HtmlContainer;
 use build_html::HtmlPage;
@@ -7,13 +5,18 @@ use section::Section;
 use std::path::Path;
 use thiserror::Error;
 
+/// Different attributes, like --hide or --id
+pub mod attribute;
+/// A section, like --title or --html
+pub mod section;
+
 use self::attribute::Attribute;
 
-pub fn has_section_prefix(line: &str) -> bool {
+fn has_section_prefix(line: &str) -> bool {
     line.starts_with("--") || line.starts_with("```") || line.starts_with('#')
 }
 
-pub fn strip_section_prefix(line: &str) -> Option<&str> {
+fn strip_section_prefix(line: &str) -> Option<&str> {
     line.strip_prefix("--")
         .or_else(|| {
             if line.starts_with("```") {
@@ -25,36 +28,41 @@ pub fn strip_section_prefix(line: &str) -> Option<&str> {
         .map(|line| line.trim())
 }
 
-pub fn has_attr_prefix(line: &str) -> bool {
+fn has_attr_prefix(line: &str) -> bool {
     line.starts_with("--")
 }
 
-pub fn strip_attr_prefix(line: &str) -> Option<&str> {
+fn strip_attr_prefix(line: &str) -> Option<&str> {
     line.strip_prefix("--").map(|line| line.trim())
 }
 
+/// A page
 #[derive(Clone, Debug, PartialEq)]
 pub struct Page {
     sections: Vec<Section>,
 }
 
 impl Page {
+    /// Generate a page from source
     pub fn from_source(source: &str) -> Result<Self, PageParseError> {
         Self::new(std::io::Cursor::new(source))
     }
 
+    /// Read a page from a file
     pub fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Self, PageParseError> {
         Self::new(std::io::BufReader::new(std::fs::File::open(path)?))
     }
 }
 
 impl Page {
+    /// Read a page from a reader
     pub fn new<R: std::io::BufRead>(source: R) -> Result<Self, PageParseError> {
         Ok(Self {
             sections: Reader::new(source).next_sections(None)?,
         })
     }
 
+    /// Convert a page to [build_html::html_page::HtmlPage]
     pub fn to_html(&self, project_root: &Path) -> Result<HtmlPage, PageBuildError> {
         let mut page = HtmlPage::new();
         page.add_head_link(
@@ -75,26 +83,27 @@ impl Page {
         Ok(page)
     }
 
+    /// Convert a page to a string, containing HTML for it
     pub fn to_html_string(&self, page_path: &Path) -> Result<String, PageBuildError> {
         Ok(self.to_html(page_path)?.to_html_string())
     }
 }
 
 // * ------------------------------------ Reader ------------------------------------ * //
-pub struct Reader<R> {
+pub(super) struct Reader<R> {
     lines: std::io::Lines<R>,
     peek: Option<String>,
 }
 
 impl<R: std::io::BufRead> Reader<R> {
-    pub fn new(reader: R) -> Self {
+    pub(super) fn new(reader: R) -> Self {
         Self {
             lines: reader.lines(),
             peek: None,
         }
     }
 
-    pub fn peek_line(&mut self) -> Result<Option<&String>, PageParseError> {
+    pub(super) fn peek_line(&mut self) -> Result<Option<&String>, PageParseError> {
         if self.peek.is_none() {
             if let Some(line) = self.lines.next() {
                 self.peek = Some(line?)
@@ -103,12 +112,12 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(self.peek.as_ref())
     }
 
-    pub fn next_line(&mut self) -> Result<Option<String>, PageParseError> {
+    pub(super) fn next_line(&mut self) -> Result<Option<String>, PageParseError> {
         self.peek_line()?;
         Ok(self.peek.take())
     }
 
-    pub fn next_line_if(
+    pub(super) fn next_line_if(
         &mut self,
         pred: impl FnOnce(&str) -> bool,
     ) -> Result<Option<String>, PageParseError> {
@@ -120,7 +129,7 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(None)
     }
 
-    pub fn next_line_if_map(
+    pub(super) fn next_line_if_map(
         &mut self,
         map: impl FnOnce(&str) -> Option<&str>,
     ) -> Result<Option<String>, PageParseError> {
@@ -134,11 +143,11 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(None)
     }
 
-    pub fn skip_blank(&mut self) -> Result<bool, PageParseError> {
+    pub(super) fn skip_blank(&mut self) -> Result<bool, PageParseError> {
         Ok(self.next_line_if(|line| line.trim().is_empty())?.is_some())
     }
 
-    pub fn skip_blanks(&mut self) -> Result<(), PageParseError> {
+    pub(super) fn skip_blanks(&mut self) -> Result<(), PageParseError> {
         while self.skip_blank()? {}
         Ok(())
     }
@@ -226,7 +235,7 @@ impl<R: std::io::BufRead> Reader<R> {
     }
 
     // * ----------------------------------- Specials ----------------------------------- * //
-    pub fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
+    pub(super) fn next_attr(&mut self) -> Result<Option<Attribute>, PageParseError> {
         if let Some(line) = self.next_line_if(has_attr_prefix)? {
             if let Some(attr) = strip_attr_prefix(&line) {
                 if let Some(attr) = Attribute::parse(attr)? {
@@ -239,7 +248,7 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(None)
     }
 
-    pub fn next_attrs(&mut self) -> Result<Vec<Attribute>, PageParseError> {
+    pub(super) fn next_attrs(&mut self) -> Result<Vec<Attribute>, PageParseError> {
         let mut attrs = Vec::new();
         while let Some(attr) = self.next_attr()? {
             attrs.push(attr);
@@ -247,7 +256,7 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(attrs)
     }
 
-    pub fn next_list(
+    pub(super) fn next_list(
         &mut self,
         filter: impl Fn(&str) -> bool,
     ) -> Result<Vec<String>, PageParseError> {
@@ -274,7 +283,10 @@ impl<R: std::io::BufRead> Reader<R> {
         Ok(list)
     }
 
-    pub fn next_list_prefixed(&mut self, prefix: &str) -> Result<Vec<String>, PageParseError> {
+    pub(super) fn next_list_prefixed(
+        &mut self,
+        prefix: &str,
+    ) -> Result<Vec<String>, PageParseError> {
         Ok(self
             .next_list(|line| line.starts_with(prefix))?
             .iter()
@@ -282,7 +294,10 @@ impl<R: std::io::BufRead> Reader<R> {
             .collect())
     }
 
-    pub fn next_sections(&mut self, end_tag: Option<&str>) -> Result<Vec<Section>, PageParseError> {
+    pub(super) fn next_sections(
+        &mut self,
+        end_tag: Option<&str>,
+    ) -> Result<Vec<Section>, PageParseError> {
         let mut sections = Vec::new();
         loop {
             self.skip_blanks()?;
@@ -306,6 +321,7 @@ impl<R: std::io::BufRead> Reader<R> {
                 let prefix = line.chars().take_while(|&c| c == '#').collect::<String>();
                 sections.push(Section::Text {
                     tag: format!("h{}", prefix.len()),
+                    class: None,
                     attributes: Vec::new(),
                     content: self.next_text(
                         |line| {
@@ -329,7 +345,8 @@ impl<R: std::io::BufRead> Reader<R> {
                 sections.push(Section::parse(self, &section)?);
             } else {
                 sections.push(Section::Text {
-                    tag: "p".to_owned(),
+                    tag: String::from("p"),
+                    class: None,
                     attributes: Vec::new(),
                     content: self.next_text_until(has_section_prefix, false)?,
                 });
@@ -340,36 +357,49 @@ impl<R: std::io::BufRead> Reader<R> {
 }
 
 // * ------------------------------------- Error ------------------------------------ * //
+/// An error types
 #[derive(Error, Debug)]
 pub enum PageParseError {
+    /// IO error from the reader
     #[error("Page load error")]
     IOError(
         #[source]
         #[from]
         std::io::Error,
     ),
+    /// Expected attribute
     #[error("Expected attribute, got '{0}'")]
     ExpectedAttribute(String),
+    /// Expected section
     #[error("Expected section, got '{0}'")]
     ExpectedSection(String),
+    /// Unknown section
     #[error("Unknown section: '{0}'")]
     UnknownSection(String),
+    /// Missing attribute argument
     #[error("Missing attribute argument in attribute '{0}'")]
     MissingAttributeArgument(String),
+    /// Unexpected argument
     #[error("Unexpected argument '{0}' in attribute '{1}', this attribute is ment to be used without arguments")]
     UnexpectedArgument(String, String),
+    /// Wrong metadata format
     #[error("Wrong metadata format: {0}")]
     WrongMetadataFormat(String),
+    /// Title/Subtitle section is empty
     #[error("Title/Subtitle section is empty!")]
     EmptyTitle,
+    /// Expected image source
     #[error("Expected image source")]
     ExpectedImageSource,
+    /// Expected video ID
     #[error("Expected video ID")]
     ExpectedVideoID,
 }
 
+/// An error occured while building a page
 #[derive(Error, Debug)]
 pub enum PageBuildError {
+    /// Failed to find relative path to project file
     #[error("Failed to find relative path to project file from file '{0}'")]
     RelativePathNotFound(String),
 }

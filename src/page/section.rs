@@ -4,74 +4,105 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::Path;
 
+// * ---------------------------------- Attributes ---------------------------------- * //
+macro_rules! attr {
+    ($attrs: expr, $attr: ident) => {
+        $attrs.iter().find_map(|attr| match attr {
+            Attribute::$attr(value) => Some(value),
+            _ => None,
+        })
+    };
+}
+
+macro_rules! has_attr {
+    ($attrs: expr, $attr: ident) => {
+        $attrs.iter().any(|attr| matches!(attr, Attribute::$attr))
+    };
+}
+
+// * ----------------------------------- Sections ----------------------------------- * //
+/// A section
+#[allow(missing_docs)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Section {
+    /// p, h1..h6, title, subtitle, nav, footnote
     Text {
         tag: String,
+        class: Option<Vec<String>>,
+        // htmlattrs: Vec<(String, String)>,
         attributes: Vec<Attribute>,
         content: String,
     },
+    /// aside, blockquote, note, warning
     TextWrapper {
         tag: String,
         attributes: Vec<Attribute>,
         content: String,
     },
+    /// article, section, div, code, pre, script, html, css
     Container {
         tag: String,
         attributes: Vec<Attribute>,
         content: Vec<Section>,
     },
+    /// code, pre, script, html, css
     Code {
         tag: String,
         attributes: Vec<Attribute>,
         content: String,
     },
+    /// hr
     Tag {
         tag: String,
         attributes: Vec<Attribute>,
     },
 
+    /// bookmark
     Bookmark {
         attributes: Vec<Attribute>,
         content: String,
     },
+    /// notes
     Notes {
         class: String,
         attributes: Vec<Attribute>,
         content: Vec<String>,
     },
+    /// list, olist
     List {
         tag: String,
         attributes: Vec<Attribute>,
         content: Vec<String>,
     },
+    /// checklist, todo
     Checklist {
         attributes: Vec<Attribute>,
+        prelude: String,
         content: Vec<String>,
         todo: bool,
     },
+    /// image
     Image {
         src: String,
         attributes: Vec<Attribute>,
     },
 
-    Youtube {
-        id: String,
-    },
+    /// youtube
+    Youtube { id: String },
+    /// vimeo
+    Vimeo { id: String },
 
-    Hidden {
-        content: String,
-    },
-    Metadata {
-        data: HashMap<String, String>,
-    },
-    Categories {
-        categories: Vec<String>,
-    },
+    /// hidden
+    Hidden { content: String },
+    /// metadata
+    Metadata { data: HashMap<String, String> },
+    /// cathegories
+    Categories { categories: Vec<String> },
 }
 
+// * ------------------------------------- Parse ------------------------------------ * //
 impl Section {
-    pub fn parse<R: std::io::BufRead>(
+    pub(super) fn parse<R: std::io::BufRead>(
         source: &mut super::Reader<R>,
         section: &str,
     ) -> Result<Self, PageParseError> {
@@ -83,29 +114,89 @@ impl Section {
         }
 
         match section {
-            "title" | "subtitle" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "nav" => {
-                Ok(Self::Text {
-                    tag: match section {
-                        "title" => "h1 class=\"title\"",
-                        "subtitle" => "p class=\"subtitle\"",
-                        tag => tag,
+            "title" | "subtitle" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "nav"
+            | "footnote" => Ok(Self::Text {
+                tag: match section {
+                    "title" => "h1",
+                    "subtitle" => "p",
+                    "footnote" => "p",
+                    tag => tag,
+                }
+                .to_owned(),
+                class: match section {
+                    "title" | "subtitle" => Some(vec![section.to_owned()]),
+                    _ => None,
+                },
+
+                attributes: source.next_attrs()?,
+                content: match section {
+                    "title" | "subtitle" => {
+                        source.skip_blanks()?;
+                        source.next_line()?.ok_or(PageParseError::EmptyTitle)?
                     }
-                    .to_owned(),
-                    attributes: source.next_attrs()?,
-                    content: match section {
-                        "title" | "subtitle" => {
-                            source.skip_blanks()?;
-                            source.next_line()?.ok_or(PageParseError::EmptyTitle)?
-                        }
-                        _ => source.next_text_until_section(false)?,
-                    },
-                })
-            }
-            "aside" | "blockquote" => Ok(Self::TextWrapper {
+                    _ => source.next_text_until_section(false)?,
+                },
+            }),
+            "aside" => Ok(Self::TextWrapper {
                 tag: section.to_owned(),
                 attributes: source.next_attrs()?,
                 content: source.next_text_until_section(false)?,
             }),
+            "blockquote" => {
+                let attributes = source.next_attrs()?;
+                let mut content = source.next_text_until_section(false)?;
+                if let Some(by) = attr!(attributes, By) {
+                    content.push_str(&format!("\n-- {by}"));
+                    if let Some(source) = attr!(attributes, Source) {
+                        match attr!(attributes, Url) {
+                            Some(url) => content.push_str(&format!(" (>{source}>{url}>)")),
+                            None => content.push_str(&format!(" ({source})")),
+                        }
+                    }
+                }
+
+                Ok(Self::TextWrapper {
+                    tag: section.to_owned(),
+                    attributes,
+                    content,
+                })
+            }
+            "ref" => {
+                // Title, subtitle, URL
+                let mut attributes = source.next_attrs()?;
+                let mut content = source.next_text_until_section(false)?;
+
+                if let Some(title) = attr!(attributes, Title) {
+                    let title = match attr!(attributes, Url) {
+                        Some(url) => format!(">{title}>{url}>"),
+                        None => title.to_owned(),
+                    };
+                    match attr!(attributes, Subtitle) {
+                        Some(subtitle) => {
+                            content.insert_str(0, &format!("{title} {subtitle}\n"));
+                            attributes.remove(
+                                attributes
+                                    .iter()
+                                    .position(|attr| matches!(attr, Attribute::Subtitle(_)))
+                                    .unwrap(),
+                            );
+                        }
+                        None => content.insert_str(0, &format!("{title}\n")),
+                    }
+                    attributes.remove(
+                        attributes
+                            .iter()
+                            .position(|attr| matches!(attr, Attribute::Title(_)))
+                            .unwrap(),
+                    );
+                }
+
+                Ok(Self::TextWrapper {
+                    tag: section.to_owned(),
+                    attributes,
+                    content,
+                })
+            }
             "note" | "warning" => Ok(Self::TextWrapper {
                 tag: format!("div class = \"{section}\""),
                 attributes: source.next_attrs()?,
@@ -171,6 +262,10 @@ impl Section {
             }),
             "checklist" | "todo" => Ok(Self::Checklist {
                 attributes: source.next_attrs()?,
+                prelude: source.next_text_until(
+                    |line| line.starts_with("[]") || line.starts_with("[x]"),
+                    false,
+                )?,
                 content: source
                     .next_list(|line| line.starts_with("[]") || line.starts_with("[x]"))?,
                 todo: section == "todo",
@@ -185,6 +280,11 @@ impl Section {
                 })
             }
             "youtube" => Ok(Self::Youtube {
+                id: source
+                    .next_line_if_map(super::strip_attr_prefix)?
+                    .ok_or(PageParseError::ExpectedVideoID)?,
+            }),
+            "vimeo" => Ok(Self::Vimeo {
                 id: source
                     .next_line_if_map(super::strip_attr_prefix)?
                     .ok_or(PageParseError::ExpectedVideoID)?,
@@ -218,30 +318,23 @@ impl Section {
             _ => Err(PageParseError::UnknownSection(section.to_owned())),
         }
     }
+}
 
-    pub fn to_html(&self, project_root: &Path) -> Result<String, PageBuildError> {
+// * ------------------------------------- Build ------------------------------------ * //
+impl Section {
+    pub(super) fn to_html(&self, project_root: &Path) -> Result<String, PageBuildError> {
         // * Attrs
         macro_rules! attributes {
-            ($attrs: expr) => {
-                $attrs.iter().fold("".to_owned(), |buffer, arg| {
-                    format!("{} {}", buffer, arg.to_html())
-                })
-            };
-        }
-
-        macro_rules! attr {
-            ($attrs: expr, $attr: ident) => {
-                $attrs.iter().find_map(|attr| match attr {
-                    Attribute::$attr(value) => Some(value),
-                    _ => None,
-                })
-            };
-        }
-
-        macro_rules! has_attr {
-            ($attrs: expr, $attr: ident) => {
-                $attrs.iter().any(|attr| matches!(attr, Attribute::$attr))
-            };
+            ($attrs: expr) => {{
+                let mut attrs = String::new();
+                for attr in $attrs {
+                    if let Some(html) = attr.to_html() {
+                        attrs.push(' ');
+                        attrs.push_str(&html);
+                    }
+                }
+                attrs
+            }};
         }
 
         // * Specific attrs
@@ -276,11 +369,22 @@ impl Section {
         match self {
             Self::Text {
                 tag,
+                class,
                 attributes,
                 content,
             } => Ok(format!(
-                "<{tag}{}>{}</{tag}>",
+                "<{tag}{}{}>{}{}</{tag}>",
+                match class {
+                    Some(classes) => format!(
+                        " class=\"{}\"",
+                        classes
+                            .iter()
+                            .fold(String::new(), |buffer, class| buffer + class)
+                    ),
+                    None => String::new(),
+                },
                 attributes!(attributes),
+                title!(attributes),
                 text_to_html(project_root, content)
             )),
             Self::TextWrapper {
@@ -332,7 +436,18 @@ impl Section {
             } => Ok(format!(
                 "<div class = \"bookmark\"{}>{}{}</div>",
                 attributes!(attributes),
-                title!(attributes, "h3 class = \"bookmarkTitle\""),
+                attr!(attributes, Title)
+                    .map(|title| {
+                        format!(
+                            "<h4>{}</h4>",
+                            match attr!(attributes, Url) {
+                                Some(url) =>
+                                    text_to_html(project_root, &format!(">{title}>{url}>")),
+                                None => text_to_html(project_root, title),
+                            },
+                        )
+                    })
+                    .unwrap_or_default(),
                 text_to_html(project_root, content),
             )),
             Self::Notes {
@@ -370,12 +485,14 @@ impl Section {
             )),
             Self::Checklist {
                 attributes,
+                prelude,
                 content,
                 todo,
             } => Ok(format!(
-                "<div{}>{}{}</div>",
+                "<div{}>{}<p>{}</p>{}</div>",
                 attributes!(attributes),
                 title!(attributes),
+                text_to_html(project_root, prelude),
                 join_iter(
                     content.iter().map(|item| format!(
                         "<label><input type=\"checkbox\" {}{}/> {}</label><br>",
@@ -409,6 +526,17 @@ impl Section {
                 ),
                 id
             )),
+            Self::Vimeo { id } => Ok(format!(
+                concat!(
+                    r#"<div style="padding:56.25% 0 0 0;position:relative;">"#,
+                    r#"<iframe src="https://player.vimeo.com/video/{}?title=0&byline=0&portrait=0" "#,
+                    r#"style="position:absolute;top:0;left:0;width:100%;height:100%;" "#,
+                    r#"frameborder="0" "#,
+                    r#"allow="autoplay; fullscreen; picture-in-picture" "#,
+                    r#"allowfullscreen></iframe></div>"#,
+                ),
+                id
+            )),
 
             Self::Hidden { content } => Ok(format!("<!-- {} -->", escape_html(content))),
             Self::Metadata { data: _ } => Ok(String::new()),
@@ -417,13 +545,14 @@ impl Section {
     }
 }
 
-pub fn escape_html(code: &str) -> String {
+// * -------------------------------- Text formatting ------------------------------- * //
+fn escape_html(code: &str) -> String {
     code.replace('&', "&amp")
         .replace('<', "&lt")
         .replace('>', "&gt")
 }
 
-pub fn text_to_html(project_root: &Path, text: &str) -> String {
+fn text_to_html(project_root: &Path, text: &str) -> String {
     fn regex_replace<'a>(
         text: &'a str,
         pattern: &str,
@@ -497,7 +626,7 @@ pub fn text_to_html(project_root: &Path, text: &str) -> String {
     text.replace('\n', "<br>")
 }
 
-pub fn format_link(project_root: &Path, link: &str) -> String {
+fn format_link(project_root: &Path, link: &str) -> String {
     if let Some(local_url) = link.strip_prefix('/') {
         return project_root
             .join(Path::new(local_url))
@@ -508,6 +637,6 @@ pub fn format_link(project_root: &Path, link: &str) -> String {
     link.to_owned()
 }
 
-pub fn join_iter(iter: impl Iterator<Item = String>, intersperse: &str) -> String {
+fn join_iter(iter: impl Iterator<Item = String>, intersperse: &str) -> String {
     Itertools::intersperse(iter, intersperse.to_owned()).collect::<String>()
 }

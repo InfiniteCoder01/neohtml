@@ -3,56 +3,52 @@ Things to do for OreNeo
 
 -- todo
 -- title: TODO
-[] Do some css stuff, maybe more themes.
-[] highlight.js themes
+[] Do some css stuff, maybe more themes (With metadata?).
+[] highlight.js themes, (Maybe with metadata?)
+
+-- hr
 
 -- todo
--- title: Ask
+-- title: Ask (Alan, please notice!)
+[] It would be nice to have a changelog (or atleast see github commits)
+[] It would be nice to have a reference for all attributes and inline tags
+(There is something like that for >all components with their special attributes>https://www.alanwsmith.com/pages/site-component-library--2twqcam2/>)
+
+[] "-- template: example" attribute?
+[] "-- boolean: javascript" attribute???
+[] In component library, why CSS and script are shown like they are displayed as code
+[] How do I do an underscore? (Escaping?)
+[] What is "-- results" section?
+[] How do I represent "comment" and "groups" sections?
+
+[] Image in >component library>https://www.alanwsmith.com/pages/site-component-library--2twqcam2/> is messed up, newline thing
 [] image: Basename?
-[] audio section?
-[] blurb section???
 [] Where do you get image if it's specified by basename, and how do you support links? It was still buffering when you answered :(
 
+-- hr
+
 -- todo
--- title: Sections
-
-[] head
-[] canvas
-[] vimeo
-[] config
-
-[] details
-[] dlist
-[] ext
-[] head
-[] images
-[] include
-[] menu
-[] object
-[] ref
-[] results
-[] startneoexample
-[] table
-[] text area
-[] widget
+-- title: Sections (phase 2 sections)
+[] Audio Section
+[] Blurb Section (This blurb section will be used for incoming link content on other pages)
+[] Canvas Section
+[] Data Section
+[] Details Section
+[] Dlist Section
+[] ext (External Call) Section
+[] Head Section
+[] images Section
+[] menu Section
+[] nav Section
+[] object Section
+[] table Section
+[] textarea Section
+[] widget Section
 
 -- todo
 --title: Attributes
 
 [] Show attribute values (above, below)
-
-[] AccessKey attribute
-[] AutoCapitalize attribute
-[] AutoFocus attribute
-[] By attribute
-[] Cite attribute
-[] ContentEditable attribute
-[] Generic attribute
-[] Link attribute
-[] ShowTitle attribute
-[] Subtitle attribute
-[] Type attribute
-[] Url attribute
 
 -- todo
 -- title: Code Quality
