@@ -5,6 +5,7 @@ Things to do for OreNeo
 -- title: TODO
 [] Do some css stuff, maybe more themes (With metadata?).
 [] highlight.js themes, (Maybe with metadata?)
+[] mdBook theme
 
 -- hr
 
@@ -28,11 +29,12 @@ Things to do for OreNeo
 [] Also, what about tables?
 [] And what about navigation, top menu bar and code blocks (features like run code) like in >mdBook>https://doc.rust-lang.org/book/>
 (>Rust book>https://doc.rust-lang.org/book/> is made with mdBook)?
+[] Including files?
 
 -- hr
 
 -- todo
--- title: Sections (phase 2 sections)
+-- title: Sections (phase 2 sections, not yet implemented in original)
 [] Audio Section
 [] Blurb Section (This blurb section will be used for incoming link content on other pages)
 [] Canvas Section
@@ -41,9 +43,9 @@ Things to do for OreNeo
 [] Dlist Section
 [] ext (External Call) Section
 [] Head Section
-[] images Section
+[] images Section [Isn't it already here?]
 [] menu Section
-[] nav Section
+[] nav Section [Isn't it already here?]
 [] object Section
 [] table Section
 [] textarea Section

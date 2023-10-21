@@ -1,14 +1,23 @@
-<!DOCTYPE html><html><head><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" rel="stylesheet"><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script><link href="global.css" rel="stylesheet"><script>hljs.highlightAll();</script></head><body><h1 class="title">Neopolitan wish-features</h1><div class = "note"><p>This page is specifically made for Alan to show features, which I would like to see in Neopolitan.<br>Everything you see here is implemented in my engine, so it's completely possible.</p></div class = "note"><h1 class="title">Stuff that got rejected, but is still supported by my engine</h1><p class="subtitle">Markdown shortcuts</p><pre><code class="language-markdown">Tripple backqoute for code:
-
+<!DOCTYPE html><html><head><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" rel="stylesheet"><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script><link href="global.css" rel="stylesheet"><script>hljs.highlightAll();</script></head><body><h1 class="title">Neopolitan wish-features</h1><div class = "note"><p>This page is specifically made for Alan to show features, which I would like to see in Neopolitan.<br>Everything you see here is implemented in my engine.</p></div class = "note"><p class="subtitle">Markdown tripple backqoute for code</p><pre><code class="language-markdown">```
+Some code
 ```
+
+```Rust
 fn main() {
     println!("Hello, World!");
 }
-```
-
-## Shorthands for h1-h6
-## With
-
-## Newlines</code></pre><h3>Live examples:<br>Tripple backqoute for code:</h3><pre><code>fn main() {
+```</code></pre><h3>Live example:</h3><section><pre><code>Some code</code></pre><pre><code class="language-Rust">fn main() {
     println!("Hello, World!");
-}</code></pre><h2>Shorthands for h1-h6  With<br> Newlines</h2></body></html>
+}</code></pre></section><p>Question: should <code >&#x0060;&#x0060;&#x0060;</code> without explicit language be txt or autodetect?</p><p class="subtitle">Markdown title and subtitle</p><p>I want this because it's one line title</p><pre><code class="language-markdown"># Title
+## Subtitle
+Text</code></pre><h3>Live example:</h3><section><h1>Title</h1><h2>Subtitle</h2><p>Text</p></section><p class="subtitle">Escapes (like in markdown)</p><pre><code class="language-txt">* Some bold text with a \*star\*\* **
+
+Code \` should be escapeable \` too \`
+
+I thought about this when I was writing x86\_64 in\_my\_ &gt;"blog post"&gt;https://infinitecoder01.github.io/InfiniteCoder01/blog/writing-a-compiler-backend/&gt;
+
+By the way, \&gt;links\&gt;too\&gt;
+
+And, finally, \~Cross text\~and\~ the backslash (\\) itself</code></pre><h3>Live example:</h3><section><p><strong > Some bold text with a &#x002a;star&#x002a;&#x002a; </strong><br>Code &#x0060; should be escapeable &#x0060; too &#x0060;<br>I thought about this when I was writing x86&#x005f;64 in&#x005f;my&#x005f; <a href = "https://infinitecoder01.github.io/InfiniteCoder01/blog/writing-a-compiler-backend/">"blog post"</a><br>By the way, &#x003e;links&#x003e;too&#x003e;<br>And, finally, &#x007e;Cross text&#x007e;and&#x007e; the backslash (&bsol;) itself</p></section><p>Some breaking examples: &gt;eq  &lt;eq  &#x005f;23</p><p class="subtitle">Inline tags &amp; attributes</p><pre><code class="language-markdown">Bare URL, like in mdBook: &lt;https://alanwsmith.com/neopolitan&gt;
+
+Inline images are cool: &lt;&lt;img|https://www.alanwsmith.com/favicon.ico&gt;&gt;</code></pre><h3>Live example:</h3><section><p>Bare URL, like in mdBook: <a href = "https://alanwsmith.com/neopolitan">https://alanwsmith.com/neopolitan</a><br>Inline images are cool: <img src="https://www.alanwsmith.com/favicon.ico" /></p></section><h1 class="title">Stuff that got rejected, but is still supported by my engine</h1><p>Nothing here yet. :)</p></body></html>

@@ -113,6 +113,18 @@ impl Section {
             }
         }
 
+        if let Some(language) = section.strip_prefix("```") {
+            let mut attributes = source.next_attrs()?;
+            if !language.is_empty() {
+                attributes.push(Attribute::Class(format!("language-{language}")));
+            }
+            return Ok(Self::Code {
+                tag: "code".to_owned(),
+                attributes,
+                content: source.next_text_until_tag("```", true)?,
+            });
+        }
+
         match section {
             "title" | "subtitle" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "nav"
             | "footnote" => Ok(Self::Text {
@@ -224,14 +236,6 @@ impl Section {
                     tag: map_code_tag(section).to_owned(),
                     attributes,
                     content: source.next_text_until_section(true)?,
-                })
-            }
-            "```" => {
-                let attributes = source.next_attrs()?;
-                Ok(Self::Code {
-                    tag: "code".to_owned(),
-                    attributes,
-                    content: source.next_text_until_tag("```", true)?,
                 })
             }
             "hr" => {
@@ -547,9 +551,9 @@ impl Section {
 
 // * -------------------------------- Text formatting ------------------------------- * //
 fn escape_html(code: &str) -> String {
-    code.replace('&', "&amp")
-        .replace('<', "&lt")
-        .replace('>', "&gt")
+    code.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn text_to_html(project_root: &Path, text: &str) -> String {
@@ -592,7 +596,23 @@ fn text_to_html(project_root: &Path, text: &str) -> String {
 
     let text = escape_html(text);
 
+    // Escapes
+    let text = text.replace("\\\\", "&bsol;");
+    let text = text.replace("\\&lt;", "&#x003c;");
+    let text = text.replace("\\&gt;", "&#x003e;");
+    let text = text.replace("\\*", "&#x002a;");
+    let text = text.replace("\\_", "&#x005f;");
+    let text = text.replace("\\~", "&#x007e;");
+    let text = text.replace("\\`", "&#x0060;");
+
     // Tag
+    let text = regex_replace(&text, r"<<(\w+)\s*\|(.*?)>>", |captures| {
+        match &captures[1] {
+            "img" => format!("<img src=\"{}\" />", format_link(project_root, &captures[2])),
+            tag => format!("<{tag} {} />", format_attrs!(captures[2])),
+        }
+    });
+
     let text = regex_replace(
         &text,
         r"<<(\w+)\s*\|(.*?)\|(.*?)>>",
@@ -605,6 +625,10 @@ fn text_to_html(project_root: &Path, text: &str) -> String {
     // Shortcuts
     let text = regex_replace(&text, r">(.*?)>(.*?)>", |captures| {
         make_link(project_root, &captures[1], &captures[2])
+    });
+
+    let text = regex_replace(&text, r"<(.*?)>", |captures| {
+        make_link(project_root, &captures[1], &captures[1])
     });
 
     let text = regex_replace(&text, r"\*(.*?)\*(.*?)\*", |captures| {

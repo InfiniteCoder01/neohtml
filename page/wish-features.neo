@@ -7,43 +7,126 @@ show features, which I would like to see in
 Neopolitan.
 
 Everything you see here is implemented in
-my engine, so it's completely possible.
+my engine.
+
+
+
+-- subtitle
+Markdown tripple backqoute for code
+
+-- code/
+-- class: language-markdown
+```
+Some code
+```
+
+```Rust
+fn main() {
+    println!("Hello, World!");
+}
+```
+-- /code
+
+-- h3
+Live example:
+
+-- section/
+```
+Some code
+```
+
+```Rust
+fn main() {
+    println!("Hello, World!");
+}
+```
+-- /section
+Question: should `\`\`\``` without explicit language be txt or autodetect?
+
+
+
+
+-- subtitle
+Markdown title and subtitle
+
+I want this because it's one line title
+
+-- code/
+-- class: language-markdown
+# Title
+## Subtitle
+Text
+-- /code
+
+-- h3
+Live example:
+
+-- section/
+# Title
+## Subtitle
+Text
+-- /section
+
+
+
+
+-- subtitle
+Escapes (like in markdown)
+
+-- code/
+-- class: language-txt
+* Some bold text with a \*star\*\* **
+
+Code \` should be escapeable \` too \`
+
+I thought about this when I was writing x86\_64 in\_my\_ >"blog post">https://infinitecoder01.github.io/InfiniteCoder01/blog/writing-a-compiler-backend/>
+
+By the way, \>links\>too\>
+
+And, finally, \~Cross text\~and\~ the backslash (\\) itself
+-- /code
+
+-- h3
+Live example:
+
+-- section/
+* Some bold text with a \*star\*\* **
+
+Code \` should be escapeable \` too \`
+
+I thought about this when I was writing x86\_64 in\_my\_ >"blog post">https://infinitecoder01.github.io/InfiniteCoder01/blog/writing-a-compiler-backend/>
+
+By the way, \>links\>too\>
+
+And, finally, \~Cross text\~and\~ the backslash (\\) itself
+-- /section
+Some breaking examples: >eq  <eq  \_23
+
+
+
+
+-- subtitle
+Inline tags & attributes
+
+-- code/
+-- class: language-markdown
+Bare URL, like in mdBook: <https://alanwsmith.com/neopolitan>
+
+Inline images are cool: <<img|https://www.alanwsmith.com/favicon.ico>>
+-- /code
+
+-- h3
+Live example:
+
+-- section/
+Bare URL, like in mdBook: <https://alanwsmith.com/neopolitan>
+
+Inline images are cool: <<img|https://www.alanwsmith.com/favicon.ico>>
+-- /section
+
+
 
 -- title
 Stuff that got rejected, but is still supported by my engine
 
--- subtitle
-Markdown shortcuts
-
--- code/
--- class: language-markdown
-Tripple backqoute for code:
-
-```
-fn main() {
-    println!("Hello, World!");
-}
-```
-
-## Shorthands for h1-h6
-## With
-
-## Newlines
-
--- /code
-
--- h3
-Live examples:
-
-Tripple backqoute for code:
-
-```
-fn main() {
-    println!("Hello, World!");
-}
-```
-
-## Shorthands for h1-h6
-## With
-
-## Newlines
+Nothing here yet. :)
