@@ -31,6 +31,7 @@ Things to do for OreNeo
 [] image: Basename? Can we just do path from root or like we do with links?
 [] Where do you get image if it's specified by basename, and how do you support links? It was still buffering when you answered :(
 
+[] What about indentation
 [] Also, what about tables?
 [] And what about navigation, top menu bar and code blocks (features like run code) like in >mdBook>https://doc.rust-lang.org/book/>
 (>Rust book>https://doc.rust-lang.org/book/> is made with mdBook)?
