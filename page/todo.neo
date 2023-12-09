@@ -2,6 +2,11 @@
 Things to do for OreNeo
 
 -- todo
+-- title: Wish, but not yet implemented
+[] "-- list: Inline title"
+[] "-- show" for sections
+
+-- todo
 -- title: TODO
 [] Do some css stuff, maybe more themes (With metadata?).
 [] highlight.js themes, (Maybe with metadata?)
@@ -15,15 +20,15 @@ Things to do for OreNeo
 [] It would be nice to have a reference for all attributes and inline tags
 (There is something like that for >all components with their special attributes>https://www.alanwsmith.com/pages/site-component-library--2twqcam2/>)
 
-[] "-- template: example" attribute?
-[] "-- boolean: javascript" attribute???
+[] What is "-- template: example" attribute?
+[] What is "-- boolean: javascript" attribute???
 [] In component library, why CSS and script are shown like they are displayed as code
 [] How do I do an underscore? (Escaping?)
 [] What is "-- results" section?
-[] How do I represent "comment" and "groups" sections?
+[] How do I represent "comment" and "groups" sections in neopolitan code?
 
 [] Image in >component library>https://www.alanwsmith.com/pages/site-component-library--2twqcam2/> is messed up, newline thing
-[] image: Basename?
+[] image: Basename? Can we just do path from root or like we do with links?
 [] Where do you get image if it's specified by basename, and how do you support links? It was still buffering when you answered :(
 
 [] Also, what about tables?
